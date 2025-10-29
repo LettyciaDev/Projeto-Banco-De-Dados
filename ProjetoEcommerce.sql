@@ -35,3 +35,26 @@ CREATE TABLE produto (
     FOREIGN KEY (vendedor_id) REFERENCES vendedores(id)
 );
 
+DELIMITER //
+CREATE FUNCTION Calcula_idade (cliente_id INT)
+RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE data_nascimento DATE;
+    DECLARE idade INT;
+
+    SELECT data_n INTO data_nascimento
+    FROM clientes
+    WHERE id = cliente_id
+
+    SET idade = TIMESTAMDIFF(YEAR, data_nascimento, CURDATE());
+
+    RETURN idade;
+
+END //
+
+DELIMITER;
+
+
+DELIMITER //
+
+
