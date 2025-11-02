@@ -10,18 +10,25 @@ CREATE TABLE clientes(
     data_n DATE NOT NULL
 );
 
-CREATE TABLE clientes_especiais(
-	id INT PRIMARY KEY,
-    cashback DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (id) REFERENCES clientes(id)
-);
-
 CREATE TABLE vendedores(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     nome VARCHAR(30) NOT NULL,
     causa_s VARCHAR(50) NOT NULL,
     tipo VARCHAR(20) NOT NULL,
     nota_m DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE transportadora(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(50) NOT NULL,
+    cidade VARCHAR(50) NOT NULL,
+    transporte VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE clientes_especiais(
+	id INT PRIMARY KEY,
+    cashback DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (id) REFERENCES clientes(id)
 );
 
 CREATE TABLE produto (
@@ -34,6 +41,18 @@ CREATE TABLE produto (
 	vendedor_id INT NOT NULL, 
     FOREIGN KEY (vendedor_id) REFERENCES vendedores(id)
 );
+
+CREATE TABLE venda(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data_venda DATE NOT NULL,
+    hora TIME NOT NULL,
+    id_cliente INT NOT NULL,
+    id_produto INT NOT NULL,
+    id_transp INT NOT NULL,
+    FOREIGN KEY (id_cliente) REFERENCES cliente(id),
+    FOREIGN KEY (id_produto) REFERENCES produto(id),
+    FOREIGN KEY (id_transp) REFERENCES transportadora(id)
+)
 
 DELIMITER //
 CREATE FUNCTION Calcula_idade (cliente_id INT)
