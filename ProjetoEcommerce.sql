@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS cliente(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     nome VARCHAR(30) NOT NULL,
     idade TINYINT NOT NULL,
-    sexo VARCHAR(1) CHECK(sexo = 'm' OR sexo = 'f' OR sexo = 'o') NOT NULL,
+    sexo VARCHAR(1) NOT NULL CHECK(sexo = 'm' OR sexo = 'f' OR sexo = 'o'),
     data_n DATE NOT NULL
 );
 
@@ -15,22 +15,22 @@ CREATE TABLE IF NOT EXISTS vendedor(
     nome VARCHAR(30) NOT NULL,
     causa_s VARCHAR(50) NOT NULL,
     tipo VARCHAR(20) NOT NULL,
-    cargo VARCHAR(20) CHECK(cargo = "vendedor" OR cargo = "gerente" OR cargo = "CEO"),
-    nota_media DECIMAL(10, 2) NOT NULL,
+    cargo VARCHAR(20) NOT NULL CHECK(cargo = "vendedor" OR cargo = "gerente" OR cargo = "CEO"),
+    nota_media DECIMAL(10, 2) NOT NULL CHECK (nota_media >= 0.00 AND nota_media <= 5.00),
     valor_vendido DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     salario DECIMAL(10, 2) NOT NULL DEFAULT 0.00
 );
 CREATE TABLE IF NOT EXISTS clientes_especiais(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     id_cliente INT,
-    cashback DECIMAL(10,2) NOT NULL DEFAULT 0,
+    cashback DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id)
 );
 
 CREATE TABLE IF NOT EXISTS funcionario_especial(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     id_vendedor INT,
-    bonus DECIMAL (10, 2) NOT NULL DEFAULT 0,
+    bonus DECIMAL (10, 2) NOT NULL DEFAULT 0.00,
     FOREIGN KEY (id_vendedor) REFERENCES vendedores(id)    
 );
 
@@ -154,35 +154,37 @@ BEGIN
 	DECLARE total_gasto DECIMAL(10,2);
     DECLARE cashback_cliente DECIMAL(10,2);
     DECLARE total_cashback DECIMAL(10,2);
-		
+	DECLARE cliente_id INT;
+    
+    SELECT id_cliente INTO cliente_id
+	FROM venda
+    WHERE id = NEW.id_venda;
+    
     SELECT SUM(vendap.valor * vendap.qtd)
     INTO total_gasto
     FROM venda_produto vendap
     INNER JOIN venda v ON v.id = vendap.id_venda
-    WHERE v.id_cliente = (
-		SELECT v2.id_cliente FROM venda v2 WHERE v2.id = NEW.id_venda
-	);
+    WHERE v.id_cliente = cliente_id;
     
     IF total_gasto > 500 THEN 
 		SET cashback_cliente = total_gasto * 0.02;
         
         IF NOT EXISTS (
 			SELECT 1 FROM clientes_especiais ce
-            INNER JOIN venda v ON v.id_cliente = ce.id_cliente
-            WHERE v.id = NEW.id_venda
+            WHERE ce.id_cliente = cliente_id
 		) THEN
 			INSERT INTO clientes_especiais (id_cliente, cashback)
-			VALUES(
-				(SELECT id_cliente FROM venda WHERE id = NEW.id_venda),
-				cashback_cliente
-			);
+			VALUES(cliente_id, cashback_cliente);
 		ELSE
-			UPDATE clientes_especiais ce
-			INNER JOIN venda v ON v.id_cliente = ce.id_cliente
-			SET ce.cashback = ce.cashback + cashback_cliente
-			WHERE v.id = NEW.id_venda;
+			UPDATE clientes_especiais
+			SET cashback = cashback + cashback_cliente
+            WHERE id_cliente = cliente_id;
 		END IF;
-                
+        
+        DELETE FROM clientes_especiais
+        WHERE id_cliente = cliente_id
+			AND cashback <= 0;
+        
 		SELECT SUM(cashback)
 		INTO total_cashback
 		FROM clientes_especiais;
