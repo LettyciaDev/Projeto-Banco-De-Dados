@@ -98,6 +98,7 @@ JOIN produto ON venda_produto.id_produto = produto.id
 JOIN vendedor ON produto.id_vendedor = vendedor.id
 JOIN cliente ON venda.id_cliente = cliente.id;
 
+-- Função calcula_idade
 DELIMITER //
 CREATE FUNCTION Calcula_idade (cliente_id INT)
 RETURNS INT DETERMINISTIC
@@ -114,6 +115,52 @@ BEGIN
     RETURN idade;
 END //
 DELIMITER //
+
+-- Função Soma_fretes
+DELIMITER $$
+CREATE FUNCTION Soma_fretes (destino VARCHAR(50))
+RETURNS DECIMAL(10, 2)
+READS SQL DATA
+BEGIN
+    DECLARE total_fretes DECIMAL(10, 2);
+
+    SELECT
+        SUM(VP.valor) INTO total_fretes
+    FROM
+        venda AS V
+    INNER JOIN
+        transportadora AS T ON V.id_transp = T.id
+    INNER JOIN
+        venda_produto AS VP ON V.id = VP.id_venda
+    WHERE
+        T.cidade = destino;
+
+    RETURN IFNULL(total_fretes, 0.00);
+END $$
+DELIMITER ;
+
+-- Função Arrecadado
+DELIMITER $$
+CREATE FUNCTION Arrecadado (data_venda DATE, id_vendedor_param INT)
+RETURNS DECIMAL(10, 2)
+READS SQL DATA
+BEGIN
+    DECLARE total_arrecadado DECIMAL(10, 2);
+
+    SELECT
+        SUM(VP.valor) INTO total_arrecadado
+    FROM
+        venda AS V
+    INNER JOIN
+        venda_produto AS VP ON V.id = VP.id_venda
+    INNER JOIN
+        produto AS P ON VP.id_produto = P.id
+    WHERE
+        V.data_venda = data_venda AND P.id_vendedor = id_vendedor_param;
+
+    RETURN IFNULL(total_arrecadado, 0.00);
+END $$
+DELIMITER ;
 
 -- Trigger de funcionario especial
 DELIMITER $$
