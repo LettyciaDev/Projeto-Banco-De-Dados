@@ -24,14 +24,14 @@ CREATE TABLE IF NOT EXISTS clientes_especiais(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     id_cliente INT,
     cashback DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    FOREIGN KEY (id_cliente) REFERENCES clientes(id)
+    FOREIGN KEY (id_cliente) REFERENCES cliente(id)
 );
 
 CREATE TABLE IF NOT EXISTS funcionario_especial(
 	id INT PRIMARY KEY AUTO_INCREMENT,
     id_vendedor INT,
     bonus DECIMAL (10, 2) NOT NULL DEFAULT 0.00,
-    FOREIGN KEY (id_vendedor) REFERENCES vendedores(id)    
+    FOREIGN KEY (id_vendedor) REFERENCES vendedor(id)    
 );
 
 CREATE TABLE IF NOT EXISTS transportadora(
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS venda(
     id_cliente INT NOT NULL,
     id_produto INT NOT NULL,
     id_transp INT NOT NULL,
-    FOREIGN KEY (id_cliente) REFERENCES clientes(id),
+    FOREIGN KEY (id_cliente) REFERENCES cliente(id),
     FOREIGN KEY (id_produto) REFERENCES produto(id),
     FOREIGN KEY (id_transp) REFERENCES transportadora(id)
 );
@@ -85,6 +85,7 @@ GRANT SELECT, INSERT ON projeto.venda TO 'funcionario@localhost';
 
 FLUSH PRIVILEGES;
 
+-- View vendas detalhadas
 CREATE OR REPLACE VIEW vendas_detalhadas AS
 SELECT venda.id AS id_venda,
 cliente.nome AS nome_cliente,
@@ -97,6 +98,21 @@ JOIN venda_produto ON venda_produto.id_venda = venda.id
 JOIN produto ON venda_produto.id_produto = produto.id
 JOIN vendedor ON produto.id_vendedor = vendedor.id
 JOIN cliente ON venda.id_cliente = cliente.id;
+
+-- View total por vendedor
+CREATE OR REPLACE VIEW total_por_vendedor AS
+SELECT vendedor.id AS id_vendedor,
+vendedor.nome AS nome_vendedor,
+vendedor.causa_s AS causa_social,
+vendedor.tipo AS tipo_vendedor,
+vendedor.nota_media AS nota_media,
+vendedor.valor_vendido AS total_registrado,
+COUNT(DISTINCT venda.id) AS total_vendas_realizadas
+FROM vendedor
+JOIN produto ON vendedor.id = produto.id_vendedor
+JOIN venda_produto ON produto.id = venda_produto.id_produto
+JOIN venda ON venda.id = venda_produto.id_venda
+GROUP BY vendedor.id, vendedor.nome, vendedor.causa_s, vendedor.tipo, vendedor.nota_media, vendedor.valor_vendido;
 
 -- Função calcula_idade
 DELIMITER //
