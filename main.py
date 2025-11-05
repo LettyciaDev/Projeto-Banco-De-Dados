@@ -21,7 +21,8 @@ class SistemaEcommerce:
                 host=host,
                 user=user,    
                 password=password,
-                database=database
+                database=database,
+                auth_plugin='mysql_native_password'
             )
             self.cursor = self.conexao.cursor(dictionary=True)
             print("Conectado ao banco de dados com sucesso")
