@@ -204,9 +204,8 @@ DELIMITER ;
 
 -- Trigger de funcionario especial
 DELIMITER $$
-USE `projeto`$$
-CREATE DEFINER = CURRENT_USER TRIGGER `projeto`.`vendedor_bonus` 
-AFTER UPDATE ON `vendedor` 
+CREATE TRIGGER vendedor_bonus 
+AFTER UPDATE ON vendedor 
 FOR EACH ROW
 BEGIN
 	DECLARE bonus_total DECIMAL(10, 2);
@@ -226,16 +225,13 @@ BEGIN
     END IF;
     
     SELECT SUM(bonus) INTO bonus_total FROM funcionario_especial;
-    
-    SELECT CONCAT('Total de bônus salarial necessário para custear: R$ ', bonus_total) AS mensagem;
 END$$
 DELIMITER ;
-
+	
 -- Trigger de cliente especial
 DELIMITER $$
-USE `projeto`$$	
-CREATE DEFINER = CURRENT_USER TRIGGER `projeto`.`cashback_cliente` 
-AFTER INSERT ON `venda_produto` 
+CREATE TRIGGER cashback_cliente 
+AFTER INSERT ON venda_produto 
 FOR EACH ROW
 BEGIN
 	DECLARE total_gasto DECIMAL(10,2);
@@ -268,16 +264,23 @@ BEGIN
             WHERE id_cliente = cliente_id;
 		END IF;
         
-        DELETE FROM clientes_especiais
-        WHERE id_cliente = cliente_id
-			AND cashback <= 0;
-        
 		SELECT SUM(cashback)
 		INTO total_cashback
 		FROM clientes_especiais;
-                
-		SELECT CONCAT('Total de cashback a ser custeado: R$ ', total_cashback) AS mensagem;
     END IF;            
+END$$
+DELIMITER ;
+
+-- trigger para tirar cliente especial
+DELIMITER $$
+CREATE TRIGGER remover_cliente_especial
+AFTER UPDATE ON clientes_especiais
+FOR EACH ROW
+BEGIN
+	IF NEW.cashback = 0 THEN
+		DELETE FROM clientes_especiais
+        WHERE id_cliente = NEW.id_cliente;
+	END IF;
 END$$
 DELIMITER ;
 
