@@ -1,141 +1,314 @@
+from mysql.connector import Error
 from dotenv import load_dotenv
 import mysql.connector
 import os
 
 load_dotenv()
-
+    
 host = os.getenv("DB_HOST")
 user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 database = os.getenv("DB_NAME")
 
-try: 
-    conexao = mysql.connector.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database
-    )
-    cursor = conexao.cursor()
-    print("Conexão estabelecida com sucesso")
+class SistemaEcommerce:
+    def __init__(self):
+        self.conexao = None
+        self.cursor = None
+    
+    def conectar(self):
+        try:
+            self.conexao = mysql.connector.connect(
+                host=host,
+                user=user,    
+                password=password,
+                database=database
+            )
+            self.cursor = self.conexao.cursor(dictionary=True)
+            print("Conectado ao banco de dados com sucesso")
+            return True
+        except Error as e:
+            print(f"Erro ao conectar: {e}")
+            return False
+    
+    def desconectar(self):
+        if self.conexao and self.conexao.is_connected():
+            self.cursor.close()
+            self.conexao.close()
+            print("Desconectado do banco de dados")
 
-except mysql.connector.Error as err:
-    print(f"Erro ao conectar: {err}")
-    exit()
-
-
-def executar_script_sql(arquivo):
-    try:
-        with open(arquivo, 'r') as file:
-            sql_script = file.read()
-        
-        print(f"Executando comandos do arquivo: {arquivo}")
-
-        for result in cursor.execute(sql_script, multi=True):
-            if result.with_rows:
-                pass
-            elif result.rowcount > 0:
-                print(f" -> {result.rowcount} linha(s) afetada(s) por um comando")
+    def executar_procedure(self, nome_procedure, params=None):
+        try:
+            if params:
+                self.cursor.callproc(nome_procedure, params)
             else:
-                print(f" -> Comando {result.statement.split()[0]} executado com sucesso")
-        conexao.commit()
-        print("Script SQL executado e alterações confirmadas com sucesso")
-
-    except FileNotFoundError:
-        print(f"Erro: Arquivo não encontrado")
-    except mysql.connector.Error as err:
-        print(f"Erro de SQL durante a execução: {err}")
-        conexao.rollback()
-
-def cadastrarCliente():
-    print("\n--- Cadastrar Cliente ---")
-
-    from datetime import datetime
-    
-    nome = input("Digite o nome: ")
-    idade = input("Digite a idade: ") 
-    sexo = input("Digite o sexo: [m,f,o] ").lower()
-    data_str = input("Digite a data de nascimento: [dd/mm/aaaa] ")
-
-    try:
-        data_n = datetime.strptime(data_str, "%d/%m/%Y").strftime("%Y-%m-%d")
-    except ValueError:
-        print("ERRO: Formato de data inválido. Use dd/mm/aaaa.")
-        return 
-
-    sql_query = "INSERT INTO clientes(nome, idade, sexo, data_n) VALUES (%s, %s, %s, %s)"
-   
-    dados = (nome, idade, sexo, data_n)
-    
-    try:
-        cursor.execute(sql_query, dados)
-        conexao.commit()
-        print("Informações do cliente adicionadas com sucesso!")
-    except mysql.connector.Error as err:
-        print(f"Erro ao adicionar informações: {err}")
-        conexao.rollback()
-
-
-def cadastrarProduto():
-    print("\n--- Cadastrar Produto ---")
-    nome = input("Produto: ")
-    descr = input("Descrição: ")
-
-    try:
-        qtd = int(input("Quantidade em estoque: "))
-        valor = float(input("Valor: "))
-    except ValueError:
-        print("ERRO: Quantidade e Valor devem ser números válidos.")
-        return
-
-    obs = input("Obs: ")
-    
-    sql_query = "INSERT INTO produto(nome, descricao, quantidade_em_estoque, valor, observacoes) VALUES (%s, %s, %s, %s, %s)"
-    dados = (nome, descr, qtd, valor, obs)
-    
-    try:
-        cursor.execute(sql_query, dados)
-        conexao.commit()
-        print("Informações do produto adicionadas com sucesso!")
-    except mysql.connector.Error as err:
-        print(f"Erro ao adicionar informações: {err}")
-        conexao.rollback()
-
-
-def menu():
-    while True:
-        print("Sistema de E-commerce")
-        print("1 - Criar Banco de dados")
-        print("2 - Excluir Banco de dados")
-        print("3. Cadastrar Novo Cliente ")
-        print("4. Cadastrar Novo Produto ")
-        print("5. Executar Estatísticas")
-        print("0. Sair")
-
-        resp = input("Escolha uma opção: ")
-
-        if resp == '1':
-            executar_script_sql("ProjetoEcommerce.sql")
-        elif resp == '2':
-            try:
-                cursor.execute(f"DROP DATABASE IF EXISTS {database}")
-                conexao.commit()
-                print(f"Banco de dados '{database}' excluído com sucesso")
-            except mysql.connector.Error as err:
-                print(f"Erro ao excluir banco de dados: {err}")
-        elif resp == '3':
-            cadastrarCliente()
-        elif resp == '4':
-            cadastrarProduto()
-        elif resp == '0':
-            print("Encerrando o sistema. Até logo!")
-            cursor.close()
-            conexao.close()
-            break
+                self.cursor.callproc(nome_procedure)
             
-        else: 
-            print("Opção inválida. Tente novamente.")
+            resultados = []
+            for resultado in self.cursor.fetchall():
+                resultados.append(resultado)
             
-        
+            self.conexao.commit()
+            return resultados
+        except Error as e:
+            print(f"Erro ao executar procedure: {e}")
+            return None 
+
+    def executar_query(self, query, params=None):
+        try:
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+            
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"Erro ao executar query: {e}")
+            return None
+    
+    def menu_clientes(self):
+        while True:
+            print("\nGERENCIAR CLIENTES")
+            print("1. Adicionar cliente")
+            print("2. Listar clientes")
+            print("3. Atualizar cliente")
+            print("4. Deletar cliente")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                nome = input("Nome: ").strip()
+                idade = input("Idade: ").strip()
+                sexo = input("Sexo (m/f/o): ").strip().lower()
+                data_n = input("Data de nascimento (YYYY-MM-DD): ").strip()
+                
+                self.executar_procedure("adicionar_cliente", [nome, idade, sexo, data_n])
+                print("Cliente adicionado com sucesso.")
+            
+            elif opcao == "2":
+                resultados = self.executar_query("SELECT * FROM cliente")
+                if resultados:
+                    print("\nLISTA DE CLIENTES")
+                    for cliente in resultados:
+                        print(f"ID: {cliente[0]} | Nome: {cliente[1]} | Idade: {cliente[2]} | Sexo: {cliente[3]} | Nascimento: {cliente[4]}")
+                else:
+                    print("Nenhum cliente encontrado")
+            
+            elif opcao == "3":
+                cliente_id = input("ID do cliente: ").strip()
+                novo_nome = input("Novo nome: ").strip()
+                self.executar_procedure("atualizar_cliente", [cliente_id, novo_nome])
+                print("Cliente atualizado com sucesso.")
+            
+            elif opcao == "4":
+                cliente_id = input("ID do cliente: ").strip()
+                self.executar_procedure("deletar_cliente", [cliente_id])
+                print("Cliente deletado com sucesso.")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida.")
+    
+    def menu_vendedores(self):
+        while True:
+            print("\nGERENCIAR VENDEDORES")
+            print("1. Adicionar vendedor")
+            print("2. Listar vendedores")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                nome = input("Nome: ").strip()
+                causa_s = input("Causa/Especialidade: ").strip()
+                tipo = input("Tipo: ").strip()
+                cargo = input("Cargo (vendedor/gerente/CEO): ").strip()
+                nota_media = input("Nota média (0.00-5.00): ").strip()
+                
+                self.executar_procedure("adicionar_vendedor", [nome, causa_s, tipo, cargo, nota_media])
+                print("Vendedor adicionado com sucesso.")
+            
+            elif opcao == "2":
+                resultados = self.executar_query("SELECT * FROM vendedor")
+                if resultados:
+                    print("\nLISTA DE VENDEDORES")
+                    for vendedor in resultados:
+                        print(f"ID: {vendedor[0]} | Nome: {vendedor[1]} | Cargo: {vendedor[4]} | Nota: {vendedor[5]}")
+                else:
+                    print("Nenhum vendedor encontrado.")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção invalida.")
+    
+    
+    def menu_produtos(self):
+        while True:
+            print("\nGERENCIAR PRODUTOS")
+            print("1. Adicionar produto")
+            print("2. Listar produtos")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                nome = input("Nome: ").strip()
+                descr = input("Descrição: ").strip()
+                qtd_estoque = input("Quantidade em estoque: ").strip()
+                valor = input("Valor: ").strip()
+                obs = input("Observações: ").strip()
+                id_vendedor = input("ID do vendedor: ").strip()
+                
+                self.executar_procedure("adicionar_produto", [nome, descr, qtd_estoque, valor, obs, id_vendedor])
+                print("Produto adicionado com sucesso.")
+            
+            elif opcao == "2":
+                resultados = self.executar_query("SELECT * FROM produto")
+                if resultados:
+                    print("\nLISTA DE PRODUTOS")
+                    for produto in resultados:
+                        print(f"ID: {produto[0]} | Nome: {produto[1]} | Estoque: {produto[3]} | Valor: R${produto[4]}")
+                else:
+                    print("Nenhum produto encontrado.")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção invalida.")
+                
+    def menu_vendas(self):
+        while True:
+            print("\nGERENCIAR VENDAS")
+            print("1. Adicionar venda")
+            print("2. Listar vendas")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                data_venda = input("Data da venda (YYYY-MM-DD): ").strip()
+                hora = input("Hora (HH:MM:SS): ").strip()
+                id_cliente = input("ID do cliente: ").strip()
+                id_produto = input("ID do produto: ").strip()
+                id_transp = input("ID da transportadora: ").strip()
+                
+                self.executar_procedure("adicionar_venda", [data_venda, hora, id_cliente, id_produto, id_transp])
+                print("Venda adicionada com sucesso.")
+            
+            elif opcao == "2":
+                resultados = self.executar_query("SELECT * FROM vendas_detalhadas")
+                if resultados:
+                    print("\nVENDAS DETALHADAS")
+                    for venda in resultados:
+                        print(f"ID: {venda[0]} | Cliente: {venda[1]} | Produto: {venda[2]} | Total: R${venda[8]}")
+                else:
+                    print("Nenhuma venda encontrada")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção invalida.")            
+    
+    def menu_transportadoras(self):
+        while True:
+            print("\nGERENCIAR TRANSPORTADORAS")
+            print("1. Adicionar transportadora")
+            print("2. Listar transportadoras")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                nome = input("Nome: ").strip()
+                cidade = input("Cidade: ").strip()
+                transporte = input("Tipo de transporte: ").strip()
+                
+                self.executar_procedure("adicionar_transportadora", [nome, cidade, transporte])
+                print("Transportadora adicionada com sucesso.")
+            
+            elif opcao == "2":
+                resultados = self.executar_query("SELECT * FROM transportadora")
+                if resultados:
+                    print("\nLISTA DE TRANSPORTADORAS")
+                    for transp in resultados:
+                        print(f"ID: {transp[0]} | Nome: {transp[1]} | Cidade: {transp[2]} | Transporte: {transp[3]}")
+                else:
+                    print("Nenhuma transportadora encontrada")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção invalida.")
+    
+    def menu_relatorios(self):
+        while True:
+            print("\nRELATÓRIOS")
+            print("1. Estatísticas de vendas")
+            print("2. Arrecadação por vendedor")
+            print("0. Voltar")
+            
+            opcao = input("Escolha: ").strip()
+            
+            if opcao == "1":
+                self.executar_procedure("EstatisticaVendas")
+                print("Relatório gerado.")
+            
+            elif opcao == "2":
+                vendedor_id = input("ID do vendedor: ").strip()
+                data = input("Data (YYYY-MM-DD): ").strip()
+                resultados = self.executar_query("SELECT Arrecadado(%s, %s) as total", (data, vendedor_id))
+                if resultados:
+                    print(f"Total arrecadado: R${resultados[0]}")
+            
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida.")
+    
+    def menu_principal(self):
+        while True:
+            print("SISTEMA DE GERENCIAMENTO DE VENDAS")
+            print("1.  Gerenciar Clientes")
+            print("2.  Gerenciar Vendedores")
+            print("3.  Gerenciar Produtos")
+            print("4.  Gerenciar Vendas")
+            print("5.  Gerenciar Transportadoras")
+            print("6.  Relatórios")
+            print("0.  Sair")
+            
+            opcao = input("Escolha uma opção: ").strip()
+            
+            if opcao == "1":
+                self.menu_clientes()
+            elif opcao == "2":
+                self.menu_vendedores()
+            elif opcao == "3":
+                self.menu_produtos()
+            elif opcao == "4":
+                self.menu_vendas()
+            elif opcao == "5":
+                self.menu_transportadoras()
+            elif opcao == "6":
+                self.menu_relatorios()
+            elif opcao == "0":
+                print("Saindo..")
+                break
+            else:
+                print("Opção inválida.")
+
+def main():
+    sistema = SistemaEcommerce()
+    if sistema.conectar():
+        try:
+            sistema.menu_principal()
+        except KeyboardInterrupt:
+            print("\nPrograma interrompido.")
+        finally:
+            sistema.desconectar()
+    else:
+        print("Não foi possível iniciar o sistema")
+    
 if __name__ == "__main__":
-    menu()
+    main()
