@@ -4,7 +4,7 @@ import mysql.connector
 import os
 
 load_dotenv()
-    
+
 host = os.getenv("DB_HOST")
 user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
@@ -48,9 +48,17 @@ class SistemaEcommerce:
                 resultados.append(resultado)
             
             self.conexao.commit()
+            
+            while self.cursor.nextset():
+                if self.cursor.description is not None:
+                    for result in self.cursor.fetchall():
+                        print(f"MENSAGEM DO BANCO: {result}")
+
             return resultados
         except Error as e:
             print(f"Erro ao executar procedure: {e}")
+            if self.conexao and self.conexao.is_connected():
+                self.conexao.rollback()
             return None 
 
     def executar_query(self, query, params=None):
@@ -78,7 +86,12 @@ class SistemaEcommerce:
             
             if opcao == "1":
                 nome = input("Nome: ").strip()
-                idade = input("Idade: ").strip()
+                try:
+                    idade = int(input("Idade: ").strip())
+                except ValueError:
+                    print("Idade inválida. Use apenas números.")
+                    continue
+                
                 sexo = input("Sexo (m/f/o): ").strip().lower()
                 data_n = input("Data de nascimento (YYYY-MM-DD): ").strip()
                 
@@ -90,7 +103,7 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nLISTA DE CLIENTES")
                     for cliente in resultados:
-                        print(f"ID: {cliente[0]} | Nome: {cliente[1]} | Idade: {cliente[2]} | Sexo: {cliente[3]} | Nascimento: {cliente[4]}")
+                        print(f"ID: {cliente['id']} | Nome: {cliente['nome']} | Idade: {cliente['idade']} | Sexo: {cliente['sexo']} | Nascimento: {cliente['data_n']}")
                 else:
                     print("Nenhum cliente encontrado")
             
@@ -124,7 +137,11 @@ class SistemaEcommerce:
                 causa_s = input("Causa/Especialidade: ").strip()
                 tipo = input("Tipo: ").strip()
                 cargo = input("Cargo (vendedor/gerente/CEO): ").strip()
-                nota_media = input("Nota média (0.00-5.00): ").strip()
+                try:
+                    nota_media = float(input("Nota média (0.00-5.00): ").strip())
+                except ValueError:
+                    print("Nota média inválida. Use um número com ponto decimal.")
+                    continue
                 
                 self.executar_procedure("adicionar_vendedor", [nome, causa_s, tipo, cargo, nota_media])
                 print("Vendedor adicionado com sucesso.")
@@ -134,7 +151,7 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nLISTA DE VENDEDORES")
                     for vendedor in resultados:
-                        print(f"ID: {vendedor[0]} | Nome: {vendedor[1]} | Cargo: {vendedor[4]} | Nota: {vendedor[5]}")
+                        print(f"ID: {vendedor['id']} | Nome: {vendedor['nome']} | Cargo: {vendedor['cargo']} | Nota: {vendedor['nota_media']}")
                 else:
                     print("Nenhum vendedor encontrado.")
             
@@ -156,8 +173,13 @@ class SistemaEcommerce:
             if opcao == "1":
                 nome = input("Nome: ").strip()
                 descr = input("Descrição: ").strip()
-                qtd_estoque = input("Quantidade em estoque: ").strip()
-                valor = input("Valor: ").strip()
+                try:
+                    qtd_estoque = int(input("Quantidade em estoque: ").strip())
+                    valor = float(input("Valor: ").strip())
+                except ValueError:
+                    print("Quantidade ou Valor inválido. Use apenas números.")
+                    continue
+
                 obs = input("Observações: ").strip()
                 id_vendedor = input("ID do vendedor: ").strip()
                 
@@ -169,7 +191,7 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nLISTA DE PRODUTOS")
                     for produto in resultados:
-                        print(f"ID: {produto[0]} | Nome: {produto[1]} | Estoque: {produto[3]} | Valor: R${produto[4]}")
+                        print(f"ID: {produto['id']} | Nome: {produto['nome']} | Estoque: {produto['qtd_estoque']} | Valor: R${produto['valor']:.2f}")
                 else:
                     print("Nenhum produto encontrado.")
             
@@ -196,20 +218,23 @@ class SistemaEcommerce:
                 
                 self.executar_procedure("adicionar_venda", [data_venda, hora, id_cliente, id_produto, id_transp])
                 print("Venda adicionada com sucesso.")
+                
+                # Para uma venda ser completa, a tabela venda_produto precisa ser populada,
+                # mas vamos manter o código como o original por agora e focar na correção do erro.
             
             elif opcao == "2":
                 resultados = self.executar_query("SELECT * FROM vendas_detalhadas")
                 if resultados:
                     print("\nVENDAS DETALHADAS")
                     for venda in resultados:
-                        print(f"ID: {venda[0]} | Cliente: {venda[1]} | Produto: {venda[2]} | Total: R${venda[8]}")
+                        print(f"ID: {venda['id_venda']} | Cliente: {venda['nome_cliente']} | Produto: {venda['nome_produto']} | Total: R${venda['total_venda']:.2f}")
                 else:
                     print("Nenhuma venda encontrada")
             
             elif opcao == "0":
                 break
             else:
-                print("Opção invalida.")            
+                print("Opção invalida.") 
     
     def menu_transportadoras(self):
         while True:
@@ -233,7 +258,7 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nLISTA DE TRANSPORTADORAS")
                     for transp in resultados:
-                        print(f"ID: {transp[0]} | Nome: {transp[1]} | Cidade: {transp[2]} | Transporte: {transp[3]}")
+                        print(f"ID: {transp['id']} | Nome: {transp['nome']} | Cidade: {transp['cidade']} | Transporte: {transp['transporte']}")
                 else:
                     print("Nenhuma transportadora encontrada")
             
@@ -252,15 +277,20 @@ class SistemaEcommerce:
             opcao = input("Escolha: ").strip()
             
             if opcao == "1":
+                print("Gerando relatório...")
                 self.executar_procedure("EstatisticaVendas")
-                print("Relatório gerado.")
             
             elif opcao == "2":
                 vendedor_id = input("ID do vendedor: ").strip()
                 data = input("Data (YYYY-MM-DD): ").strip()
+                
                 resultados = self.executar_query("SELECT Arrecadado(%s, %s) as total", (data, vendedor_id))
-                if resultados:
-                    print(f"Total arrecadado: R${resultados[0]}")
+                
+                if resultados and resultados[0] and 'total' in resultados[0]:
+                    total = resultados[0]['total']
+                    print(f"Total arrecadado: R${total:.2f}")
+                else:
+                    print("Nenhum valor encontrado para a data e vendedor informados.")
             
             elif opcao == "0":
                 break
@@ -269,14 +299,14 @@ class SistemaEcommerce:
     
     def menu_principal(self):
         while True:
-            print("SISTEMA DE GERENCIAMENTO DE VENDAS")
-            print("1.  Gerenciar Clientes")
-            print("2.  Gerenciar Vendedores")
-            print("3.  Gerenciar Produtos")
-            print("4.  Gerenciar Vendas")
-            print("5.  Gerenciar Transportadoras")
-            print("6.  Relatórios")
-            print("0.  Sair")
+            print("\nSISTEMA DE GERENCIAMENTO DE VENDAS")
+            print("1. Gerenciar Clientes")
+            print("2. Gerenciar Vendedores")
+            print("3. Gerenciar Produtos")
+            print("4. Gerenciar Vendas")
+            print("5. Gerenciar Transportadoras")
+            print("6. Relatórios")
+            print("0. Sair")
             
             opcao = input("Escolha uma opção: ").strip()
             
