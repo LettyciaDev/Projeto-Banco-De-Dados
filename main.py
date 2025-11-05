@@ -213,15 +213,27 @@ class SistemaEcommerce:
                 data_venda = input("Data da venda (YYYY-MM-DD): ").strip()
                 hora = input("Hora (HH:MM:SS): ").strip()
                 id_cliente = input("ID do cliente: ").strip()
-                id_produto = input("ID do produto: ").strip()
                 id_transp = input("ID da transportadora: ").strip()
                 
-                self.executar_procedure("adicionar_venda", [data_venda, hora, id_cliente, id_produto, id_transp])
-                print("Venda adicionada com sucesso.")
-                
-                # Para uma venda ser completa, a tabela venda_produto precisa ser populada,
-                # mas vamos manter o código como o original por agora e focar na correção do erro.
-            
+                resultados = self.executar_procedure("adicionar_venda", [data_venda, hora, id_cliente, id_transp, None])
+                if resultados and len(resultados) > 0 and 'novo_id_venda' in resultados[0]:
+                    id_venda = resultados[0]
+                else:
+                    print("Erro ao criar venda.")
+                    
+                while True:
+                    id_produto = input("ID do produto (ou 0 para encerrar): ").strip().lower()
+                    if id_produto == 0:
+                        break
+                    try:
+                        qtd = int(input("Quantidadde: "))
+                    except ValueError:
+                        print("Quantidade inválida.")
+                        continue
+                    self.executar_procedure('adicionar_produto_venda', id_venda, id_produto, qtd)
+                    print("Produto adicionado à venda com sucesso.")
+                print("Venda registrada com sucesso.")
+
             elif opcao == "2":
                 resultados = self.executar_query("SELECT * FROM vendas_detalhadas")
                 if resultados:
