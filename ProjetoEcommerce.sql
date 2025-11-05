@@ -115,6 +115,29 @@ JOIN venda_produto ON produto.id = venda_produto.id_produto
 JOIN venda ON venda.id = venda_produto.id_venda
 GROUP BY vendedor.id, vendedor.nome, vendedor.causa_s, vendedor.tipo, vendedor.nota_media, vendedor.valor_vendido;
 
+-- View estoque do vendedor
+CREATE OR REPLACE VIEW status_estoque_vendedor AS
+SELECT
+    P.nome AS nome_produto,
+    P.descr AS descricao_produto,
+    P.qtd_estoque,
+    P.valor AS preco_unitario,
+    P.obs AS observacao_produto,
+    V.nome AS nome_vendedor_resp,
+    V.cargo AS cargo_vendedor,
+    CASE
+        WHEN P.qtd_estoque > 50 THEN 'Estoque Alto'
+        WHEN P.qtd_estoque BETWEEN 11 AND 50 THEN 'Estoque Moderado'
+        WHEN P.qtd_estoque BETWEEN 1 AND 10 THEN 'Estoque Baixo'
+        ELSE 'Esgotado'
+    END AS status_estoque
+FROM
+    produto AS P
+INNER JOIN
+    vendedor AS V ON P.id_vendedor = V.id
+ORDER BY
+    P.qtd_estoque DESC, P.nome;
+    
 -- Função calcula_idade
 DELIMITER //
 CREATE FUNCTION Calcula_idade (cliente_id INT)
