@@ -86,6 +86,7 @@ GRANT SELECT, INSERT ON projeto.venda TO 'funcionario@localhost';
 
 FLUSH PRIVILEGES;
 
+-- View vendas detalhadas
 CREATE OR REPLACE VIEW vendas_detalhadas AS
 SELECT venda.id AS id_venda,
 cliente.nome AS nome_cliente,
@@ -98,6 +99,21 @@ JOIN venda_produto ON venda_produto.id_venda = venda.id
 JOIN produto ON venda_produto.id_produto = produto.id
 JOIN vendedor ON produto.id_vendedor = vendedor.id
 JOIN cliente ON venda.id_cliente = cliente.id;
+
+-- View total por vendedor
+CREATE OR REPLACE VIEW total_por_vendedor AS
+SELECT vendedor.id AS id_vendedor,
+vendedor.nome AS nome_vendedor,
+vendedor.causa_s AS causa_social,
+vendedor.tipo AS tipo_vendedor,
+vendedor.nota_media AS nota_media,
+vendedor.valor_vendido AS total_registrado,
+COUNT(DISTINCT venda.id) AS total_vendas_realizadas
+FROM vendedor
+JOIN produto ON vendedor.id = produto.id_vendedor
+JOIN venda_produto ON produto.id = venda_produto.id_produto
+JOIN venda ON venda.id = venda_produto.id_venda
+GROUP BY vendedor.id, vendedor.nome, vendedor.causa_s, vendedor.tipo, vendedor.nota_media, vendedor.valor_vendido;
 
 -- Função calcula_idade
 DELIMITER //
