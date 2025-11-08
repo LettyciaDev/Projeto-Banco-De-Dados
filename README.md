@@ -29,6 +29,12 @@ O sistema é estruturado com as seguintes tabelas:
 - **Venda**: `id`, `cliente`, `produto(s)`, `vendedor`, `transportadora`, `data e hora`, `valor total`  
 - **Venda_Produto**: Herda dados de `Venda` e `Produto`, com `quantidade` e `observações`  
 
+### 📊 Modelos do Banco de Dados
+Os diagramas do banco de dados estão disponíveis no repositório para ilustrar a estrutura do sistema:  
+- **Modelo Conceitual** 🗺️: Representa as entidades, relacionamentos e cardinalidades do sistema:  
+  ![Modelo Conceitual](https://github.com/LettyciaDev/Projeto-Banco-De-Dados/blob/main/modelo_conceitual.png?raw=true)  
+- **Modelo Lógico** 📈: Detalha as tabelas, colunas, chaves primárias e estrangeiras:  
+  ![Modelo Lógico](https://github.com/LettyciaDev/Projeto-Banco-De-Dados/blob/main/modelo_logico.png?raw=true)
 ---
 
 ## ⚙️ Funcionalidades Implementadas
