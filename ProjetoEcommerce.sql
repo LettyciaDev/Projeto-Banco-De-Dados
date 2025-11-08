@@ -549,12 +549,11 @@ CREATE PROCEDURE adicionar_vendedor(
 	IN p_nome VARCHAR(30),
     IN p_causa_s VARCHAR(50),
     IN p_tipo VARCHAR(20),
-    IN p_cargo VARCHAR(20),
     IN p_nota_media DECIMAL(10, 2)
 )
 BEGIN
-    INSERT INTO vendedor (nome, causa_s, tipo, cargo, nota_media) 
-    VALUES (p_nome, p_causa_s, p_tipo, p_cargo, p_nota_media);
+    INSERT INTO vendedor (nome, causa_s, tipo, nota_media) 
+    VALUES (p_nome, p_causa_s, p_tipo, p_nota_media);
 END$$
 DELIMITER ;
 
