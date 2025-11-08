@@ -1,4 +1,4 @@
-# 🏀 Sistema de E-commerce de Artigos de Esportes ⚽
+# 🏀 Sistema de E-commerce de Artigos de Esportes⚽
 
 Bem-vindo ao **Sistema de E-commerce de Artigos de Esportes**, um projeto desenvolvido para gerenciar uma loja virtual de produtos esportivos com funcionalidades completas e dinâmicas! Este sistema foi criado para a disciplina de **Projeto de Banco de Dados** do curso de **Ciência da Computação** da **Universidade Católica de Pernambuco**, sob orientação do professor **Jheymesson Apolinario Cavalcanti**. 🚀
 
