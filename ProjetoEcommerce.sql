@@ -121,7 +121,7 @@ SELECT
     P.valor AS preco_unitario,
     P.obs AS observacao_produto,
     V.nome AS nome_vendedor_resp,
-    V.cargo AS cargo_vendedor,
+    V.tipo AS tipo_vendedor,
     CASE
         WHEN P.qtd_estoque > 50 THEN 'Estoque Alto'
         WHEN P.qtd_estoque BETWEEN 11 AND 50 THEN 'Estoque Moderado'
@@ -136,6 +136,7 @@ ORDER BY
     P.qtd_estoque DESC, P.nome;
     
 -- Função calcula_idade
+DROP FUNCTION IF EXISTS Calcula_idade;
 DELIMITER //
 CREATE FUNCTION Calcula_idade (cliente_id INT)
 RETURNS INT DETERMINISTIC
@@ -151,9 +152,10 @@ BEGIN
 
     RETURN idade;
 END //
-DELIMITER //
+DELIMITER ;
 
 -- Função Soma_fretes
+DROP FUNCTION IF EXISTS Soma_fretes;
 DELIMITER $$
 CREATE FUNCTION Soma_fretes (destino VARCHAR(50))
 RETURNS DECIMAL(10, 2)
@@ -177,6 +179,7 @@ END $$
 DELIMITER ;
 
 -- Função Arrecadado
+DROP FUNCTION IF EXISTS Arrecadado;
 DELIMITER $$
 CREATE FUNCTION Arrecadado (data_venda DATE, id_vendedor_param INT)
 RETURNS DECIMAL(10, 2)
@@ -200,6 +203,7 @@ END $$
 DELIMITER ;
 
 -- Trigger de funcionario especial
+DROP TRIGGER IF EXISTS vendedor_bonus;
 DELIMITER $$
 CREATE TRIGGER vendedor_bonus 
 AFTER UPDATE ON vendedor 
@@ -226,6 +230,7 @@ END$$
 DELIMITER ;
 	
 -- Trigger de cliente especial
+DROP TRIGGER IF EXISTS cashback_cliente;
 DELIMITER $$
 CREATE TRIGGER cashback_cliente 
 AFTER INSERT ON venda_produto 
@@ -269,6 +274,7 @@ END$$
 DELIMITER ;
 
 -- trigger para tirar cliente especial
+DROP TRIGGER IF EXISTS remover_cliente_especial;
 DELIMITER $$
 CREATE TRIGGER remover_cliente_especial
 AFTER UPDATE ON clientes_especiais
@@ -282,6 +288,7 @@ END$$
 DELIMITER ;
 
 -- procedimento de reajuste salario
+DROP PROCEDURE IF EXISTS reajuste_salario;
 DELIMITER $$ 
 CREATE PROCEDURE reajuste_salario (
 	IN p_percentual DECIMAL(5, 2),
@@ -295,6 +302,7 @@ END$$
 DELIMITER ;
 
 -- procedimento de sorteio 
+DROP PROCEDURE IF EXISTS sortear_cliente_premiado;
 DELIMITER $$
 
 CREATE PROCEDURE sortear_cliente_premiado()
@@ -335,6 +343,7 @@ END$$
 DELIMITER ;
 
 -- procedimento de estatisticas
+DROP PROCEDURE IF EXISTS EstatisticaVendas;
 DELIMITER $$
 CREATE PROCEDURE EstatisticaVendas()
 BEGIN
@@ -430,10 +439,9 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS atualizar_estoque;
 DELIMITER $$
 
--- atualizar_estoque: OUT p_msg
-DROP PROCEDURE IF EXISTS atualizar_estoque $$
 CREATE PROCEDURE atualizar_estoque(
     IN p_id_produto INT,
     IN p_qtd_vendida INT,
@@ -465,9 +473,12 @@ BEGIN
         SET p_msg = 'Estoque atualizado com sucesso.';
     END IF;
 END $$
+DELIMITER ;
  
 -- adicionar_venda com OUT p_novo_id_venda
-DROP PROCEDURE IF EXISTS adicionar_venda $$
+DROP PROCEDURE IF EXISTS adicionar_venda;
+
+DELIMITER $$
 CREATE PROCEDURE adicionar_venda(
     IN p_data_venda DATE,
     IN p_hora TIME,
@@ -482,9 +493,11 @@ BEGIN
     SET p_novo_id_venda = LAST_INSERT_ID();
     COMMIT;
 END $$
+DELIMITER ;
 
 -- adicionar_produto_venda usa OUT p_msg (nome correto)
-DROP PROCEDURE IF EXISTS adicionar_produto_venda $$
+DROP PROCEDURE IF EXISTS adicionar_produto_venda;
+DELIMITER $$
 CREATE PROCEDURE adicionar_produto_venda(
     IN p_id_venda INT,
     IN p_id_produto INT,
@@ -512,8 +525,8 @@ BEGIN
 END $$
 
 DELIMITER ;
---
 
+DROP PROCEDURE IF EXISTS adicionar_cliente;
 DELIMITER $$
 CREATE PROCEDURE adicionar_cliente(
 	IN p_nome VARCHAR(30),
@@ -527,6 +540,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS atualizar_cliente;
 DELIMITER $$
 CREATE PROCEDURE atualizar_cliente(
 	IN p_id INT,
@@ -537,6 +551,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS deletar_cliente;
 DELIMITER $$
 CREATE PROCEDURE deletar_cliente(IN p_id INT)
 BEGIN
@@ -544,6 +559,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS adicionar_vendedor;
 DELIMITER $$
 CREATE PROCEDURE adicionar_vendedor(
 	IN p_nome VARCHAR(30),
@@ -557,6 +573,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS adicionar_produto;
 DELIMITER $$
 CREATE PROCEDURE adicionar_produto(
     IN p_nome VARCHAR(30),
@@ -572,6 +589,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS adicionar_transportadora;
 DELIMITER $$
 CREATE PROCEDURE adicionar_transportadora(
     IN p_nome VARCHAR(50),
@@ -584,9 +602,7 @@ BEGIN
 END$$
 DELIMITER ;
 
-
 -- Inserindo 5 funcionarios
-
 CALL adicionar_vendedor('Lucas Silva', 'Equipe Performance', 'vendedor', 4.8);
 CALL adicionar_vendedor('Mariana Costa', 'Equipe Fitness', 'vendedor', 4.6);
 CALL adicionar_vendedor('Carlos Pereira', 'Equipe Outdoor', 'gerente', 4.9);
@@ -594,7 +610,6 @@ CALL adicionar_vendedor('Ana Souza', 'Equipe Premium', 'vendedor',  4.7);
 CALL adicionar_vendedor('João Oliveira', 'Equipe Adventure', 'CEO',  5.0); 
 
 -- Inserindo 20 produtos 
-
 CALL adicionar_produto('Tênis Nike Air Zoom', 'Tênis de corrida masculino', 50, 599.90, 'Edição 2025', 1);
 CALL adicionar_produto('Camisa Dry Fit', 'Camisa esportiva feminina', 80, 129.90, 'Tecido respirável', 2);
 CALL adicionar_produto('Bola de Futebol Adidas', 'Bola oficial Fifa Quality', 40, 249.90, 'Tamanho 5', 3);
@@ -616,7 +631,7 @@ CALL adicionar_produto('Tapete de Yoga', 'Antiderrapante 6mm', 85, 149.90, 'Mate
 CALL adicionar_produto('Óculos de Natação Speedo', 'Antiembaçante e UV', 60, 159.90, 'Adulto', 4);
 CALL adicionar_produto('Kit Halteres', 'Par de 10kg cada', 25, 349.90, 'Revestido em borracha', 5);
 
--- inserindo 100 clientes nativos  DELIMITER $$
+-- Corrigindo o procedimento para popular clientes
 DROP PROCEDURE IF EXISTS popular_clientes;
 DELIMITER $$
 
@@ -624,8 +639,8 @@ CREATE PROCEDURE popular_clientes()
 BEGIN
     DECLARE i INT DEFAULT 1;
     DECLARE v_nome VARCHAR(30);
-    DECLARE v_idade TINYINT;
     DECLARE v_sexo CHAR(1);
+    DECLARE v_idade TINYINT;
     DECLARE v_data_n DATE;
 
     WHILE i <= 100 DO
@@ -655,3 +670,8 @@ END$$
 DELIMITER ;
 
 CALL popular_clientes();
+
+-- Inserindo 3 transportadoras
+CALL adicionar_transportadora('Expresso Rapido', 'São Paulo', 'Caminhão');
+CALL adicionar_transportadora('Entregas Seguras', 'Rio de Janeiro', 'Van');
+CALL adicionar_transportadora('Logística Nacional', 'Belo Horizonte', 'Caminhão Baú');
