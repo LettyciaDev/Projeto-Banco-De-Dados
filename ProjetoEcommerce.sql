@@ -583,3 +583,75 @@ BEGIN
     VALUES (p_nome, p_cidade, p_transporte);
 END$$
 DELIMITER ;
+
+
+-- Inserindo 5 funcionarios
+
+CALL adicionar_vendedor('Lucas Silva', 'Equipe Performance', 'vendedor', 4.8);
+CALL adicionar_vendedor('Mariana Costa', 'Equipe Fitness', 'vendedor', 4.6);
+CALL adicionar_vendedor('Carlos Pereira', 'Equipe Outdoor', 'gerente', 4.9);
+CALL adicionar_vendedor('Ana Souza', 'Equipe Premium', 'vendedor',  4.7);
+CALL adicionar_vendedor('João Oliveira', 'Equipe Adventure', 'CEO',  5.0); 
+
+-- Inserindo 20 produtos 
+
+CALL adicionar_produto('Tênis Nike Air Zoom', 'Tênis de corrida masculino', 50, 599.90, 'Edição 2025', 1);
+CALL adicionar_produto('Camisa Dry Fit', 'Camisa esportiva feminina', 80, 129.90, 'Tecido respirável', 2);
+CALL adicionar_produto('Bola de Futebol Adidas', 'Bola oficial Fifa Quality', 40, 249.90, 'Tamanho 5', 3);
+CALL adicionar_produto('Corda de Pular Pro', 'Corda com rolamento rápido', 100, 59.90, 'Leve e resistente', 2);
+CALL adicionar_produto('Luvas de Academia', 'Luvas unissex antideslizantes', 75, 79.90, 'Couro sintético', 1);
+CALL adicionar_produto('Mochila Esportiva Puma', 'Mochila 30L resistente à água', 35, 199.90, 'Modelo 2025', 3);
+CALL adicionar_produto('Camisa do Brasil', 'Camisa oficial seleção 2025', 60, 349.90, 'Edição limitada', 4);
+CALL adicionar_produto('Bicicleta Mountain Bike', 'Aro 29 alumínio leve', 15, 2999.90, '21 marchas', 5);
+CALL adicionar_produto('Garrafa Térmica', '800ml inox esportiva', 90, 89.90, 'Tampa antivazamento', 2);
+CALL adicionar_produto('Relógio Smartwatch Fit', 'Monitor cardíaco e GPS', 40, 699.90, 'Compatível Android/iOS', 5);
+CALL adicionar_produto('Short Running', 'Short leve masculino', 70, 109.90, 'Secagem rápida', 1);
+CALL adicionar_produto('Top Fitness', 'Top de compressão', 65, 99.90, 'Suporte alto', 2);
+CALL adicionar_produto('Esteira Elétrica', 'Motor 2.5HP dobrável', 10, 3599.90, 'Suporta até 130kg', 5);
+CALL adicionar_produto('Patins Roller Pro', 'Patins profissional', 20, 899.90, 'Tamanho ajustável', 3);
+CALL adicionar_produto('Bola de Basquete Spalding', 'Oficial NBA', 25, 289.90, 'Couro sintético', 4);
+CALL adicionar_produto('Boné Nike Sportswear', 'Boné unissex ajustável', 90, 129.90, 'Logo bordado', 1);
+CALL adicionar_produto('Raquete de Tênis Wilson', 'Raquete profissional leve', 30, 499.90, 'Grip ergonômico', 3);
+CALL adicionar_produto('Tapete de Yoga', 'Antiderrapante 6mm', 85, 149.90, 'Material ecológico', 2);
+CALL adicionar_produto('Óculos de Natação Speedo', 'Antiembaçante e UV', 60, 159.90, 'Adulto', 4);
+CALL adicionar_produto('Kit Halteres', 'Par de 10kg cada', 25, 349.90, 'Revestido em borracha', 5);
+
+-- inserindo 100 clientes nativos  DELIMITER $$
+DROP PROCEDURE IF EXISTS popular_clientes;
+DELIMITER $$
+
+CREATE PROCEDURE popular_clientes()
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    DECLARE v_nome VARCHAR(30);
+    DECLARE v_idade TINYINT;
+    DECLARE v_sexo CHAR(1);
+    DECLARE v_data_n DATE;
+
+    WHILE i <= 100 DO
+        SET v_nome = CONCAT(
+            ELT(FLOOR(1 + (RAND() * 10)),
+                'Lucas', 'Maria', 'João', 'Ana', 'Pedro',
+                'Carla', 'Rafael', 'Beatriz', 'Tiago', 'Larissa'
+            ),
+            ' ',
+            ELT(FLOOR(1 + (RAND() * 10)),
+                'Silva', 'Souza', 'Oliveira', 'Costa', 'Santos',
+                'Pereira', 'Rodrigues', 'Lima', 'Gomes', 'Martins'
+            )
+        );
+
+        SET v_idade = FLOOR(18 + (RAND() * 43));
+        SET v_sexo = ELT(FLOOR(1 + RAND() * 3), 'm', 'f', 'o');
+        SET v_data_n = DATE_SUB(CURDATE(), INTERVAL v_idade YEAR);
+
+        INSERT INTO cliente (nome, idade, sexo, data_n)
+        VALUES (v_nome, v_idade, v_sexo, v_data_n);
+
+        SET i = i + 1;
+    END WHILE;
+END$$
+
+DELIMITER ;
+
+CALL popular_clientes();
