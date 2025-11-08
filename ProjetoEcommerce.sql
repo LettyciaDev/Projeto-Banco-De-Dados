@@ -14,8 +14,7 @@ CREATE TABLE IF NOT EXISTS vendedor(
     id INT PRIMARY KEY AUTO_INCREMENT,
     nome VARCHAR(30) NOT NULL,
     causa_s VARCHAR(50) NOT NULL,
-    tipo VARCHAR(20) NOT NULL,
-    cargo VARCHAR(20) NOT NULL CHECK(cargo = "vendedor" OR cargo = "gerente" OR cargo = "CEO"),
+    tipo VARCHAR(20) NOT NULL CHECK(tipo = "vendedor" OR tipo = "gerente" OR tipo = "CEO"),
     nota_media DECIMAL(10, 2) NOT NULL CHECK (nota_media >= 0.00 AND nota_media <= 5.00),
     valor_vendido DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     salario DECIMAL(10, 2) NOT NULL DEFAULT 0.00
@@ -282,19 +281,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- procedimento de reajuste salario
-DELIMITER $$ 
-CREATE PROCEDURE reajuste_salario (
-	IN p_percentual DECIMAL(5, 2),
-    IN p_tipo VARCHAR(20)
-)
-BEGIN
-	UPDATE vendedor
-    SET salario = salario + (salario * (p_percentual / 100))
-    WHERE tipo = p_tipo;
-END$$
-DELIMITER ;
-
 -- procedimento de estatisticas
 DELIMITER $$
 CREATE PROCEDURE EstatisticaVendas()
@@ -392,14 +378,16 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
+
+-- atualizar_estoque: OUT p_msg
+DROP PROCEDURE IF EXISTS atualizar_estoque $$
 CREATE PROCEDURE atualizar_estoque(
     IN p_id_produto INT,
     IN p_qtd_vendida INT,
-    OUT p_msg VARCHAR(50)
+    OUT p_msg VARCHAR(100)
 )
 BEGIN
     DECLARE estoque_atual INT;
-
     START TRANSACTION;
 
     SELECT qtd_estoque INTO estoque_atual
@@ -420,12 +408,58 @@ BEGIN
         UPDATE produto
         SET qtd_estoque = qtd_estoque - p_qtd_vendida
         WHERE id = p_id_produto;
-
         COMMIT;
         SET p_msg = 'Estoque atualizado com sucesso.';
     END IF;
-END$$
+END $$
+ 
+-- adicionar_venda com OUT p_novo_id_venda
+DROP PROCEDURE IF EXISTS adicionar_venda $$
+CREATE PROCEDURE adicionar_venda(
+    IN p_data_venda DATE,
+    IN p_hora TIME,
+    IN p_id_cliente INT,
+    IN p_id_transp INT,
+    OUT p_novo_id_venda INT
+)
+BEGIN
+    START TRANSACTION;
+    INSERT INTO venda (data_venda, hora, id_cliente, id_transp)
+      VALUES (p_data_venda, p_hora, p_id_cliente, p_id_transp);
+    SET p_novo_id_venda = LAST_INSERT_ID();
+    COMMIT;
+END $$
+
+-- adicionar_produto_venda usa OUT p_msg (nome correto)
+DROP PROCEDURE IF EXISTS adicionar_produto_venda $$
+CREATE PROCEDURE adicionar_produto_venda(
+    IN p_id_venda INT,
+    IN p_id_produto INT,
+    IN p_qtd INT,
+    IN p_valor DECIMAL(10,2),
+    IN p_obs VARCHAR(50),
+    OUT p_msg VARCHAR(200)
+)
+BEGIN
+    DECLARE v_msg_estoque VARCHAR(100);
+    START TRANSACTION;
+
+    INSERT INTO venda_produto (id_venda, id_produto, qtd, valor, obs)
+    VALUES (p_id_venda, p_id_produto, p_qtd, p_valor, p_obs);
+
+    CALL atualizar_estoque(p_id_produto, p_qtd, v_msg_estoque);
+
+    IF v_msg_estoque != 'Estoque atualizado com sucesso.' THEN
+        ROLLBACK;
+        SET p_msg = CONCAT('Erro ao adicionar produto: ', v_msg_estoque);
+    ELSE
+        COMMIT;
+        SET p_msg = 'Produto adicionado a venda e estoque atualizado.';
+    END IF;
+END $$
+
 DELIMITER ;
+--
 
 DELIMITER $$
 CREATE PROCEDURE adicionar_cliente(
@@ -483,56 +517,6 @@ CREATE PROCEDURE adicionar_produto(
 BEGIN
     INSERT INTO produto (nome, descr, qtd_estoque, valor, obs, id_vendedor) 
     VALUES (p_nome, p_descr, p_qtd_estoque, p_valor, p_obs, p_id_vendedor);
-END$$
-DELIMITER ;
-
-DELIMITER $$
-CREATE PROCEDURE adicionar_venda(
-    IN p_data_venda DATE,
-    IN p_hora TIME,
-    IN p_id_cliente INT,
-    IN p_id_transp INT,
-    OUT p_novo_id_venda INT
-)
-BEGIN
-    START TRANSACTION;
-
-    INSERT INTO venda(data_venda, hora, id_cliente, id_transp)
-    VALUES (p_data_venda, p_hora, p_id_cliente, p_id_transp);
-    
-	SET p_novo_id_venda = LAST_INSERT_ID();
-    COMMIT;
-END$$
-DELIMITER ;
-
-DROP PROCEDURE IF EXISTS adicionar_venda;
-
-DELIMITER $$
-CREATE PROCEDURE adicionar_produto_venda(
-    IN p_id_venda INT,
-    IN p_id_produto INT,
-    IN p_qtd INT,
-    IN p_valor INT,
-    IN p_obs VARCHAR(50),
-    OUT p_msg VARCHAR(100)
-)
-BEGIN
-    DECLARE v_msg_estoque VARCHAR(50);
-
-    START TRANSACTION;
-
-    INSERT INTO venda_produto (id_venda, id_produto, qtd, valor, obs)
-    VALUES (p_id_venda, p_id_produto, p_qtd, p_valor, p_obs);
-
-    CALL atualizar_estoque(p_id_produto, p_qtd, v_msg_estoque);
-
-    IF v_msg_estoque != 'Estoque atualizado com sucesso.' THEN
-        ROLLBACK;
-        SET p_msg = CONCAT('Erro ao adicionar produto: ', v_msg_estoque);
-    ELSE
-        COMMIT;
-        SET p_msg = 'Produto adicionado a venda e estoque atualizado.';
-	END IF;
 END$$
 DELIMITER ;
 
