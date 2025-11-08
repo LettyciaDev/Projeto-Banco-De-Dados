@@ -479,25 +479,23 @@ CREATE PROCEDURE adicionar_venda(
     IN p_hora TIME,
     IN p_id_cliente INT,
     IN p_id_transp INT,
-    OUT novo_id_venda VARCHAR(100)
+    OUT p_novo_id_venda INT
 )
 BEGIN
-    DECLARE v_id_venda INT;
-
     START TRANSACTION;
 
     INSERT INTO venda(data_venda, hora, id_cliente, id_transp)
     VALUES (p_data_venda, p_hora, p_id_cliente, p_id_transp);
-
-    SELECT LAST_INSERT_ID() AS novo_id_venda;
-
+    
+	SET p_novo_id_venda = LAST_INSERT_ID();
     COMMIT;
-
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS adicionar_venda;
+
 DELIMITER $$
-CREATE PROCEDURE adiconar_produto_venda(
+CREATE PROCEDURE adicionar_produto_venda(
     IN p_id_venda INT,
     IN p_id_produto INT,
     IN p_qtd INT,
