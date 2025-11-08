@@ -29,7 +29,7 @@ Projeto desenvolvido para a disciplina de **Projeto de Banco de Dados** no curso
 
 ---
 
-# Funcionalidades Implementadas
+## Funcionalidades Implementadas
 
 ### Functions
 1. **calcula_idade(id_cliente)**   
@@ -61,7 +61,7 @@ Projeto desenvolvido para a disciplina de **Projeto de Banco de Dados** no curso
 
 ---
 
-# Ferramentas utilizadas
+## Ferramentas utilizadas
 
 1. Linguagem principal: Python.
 2. Banco de dados: MySQL.
@@ -70,7 +70,7 @@ Projeto desenvolvido para a disciplina de **Projeto de Banco de Dados** no curso
 
 ---
 
-# Como executar
+## Como executar
 
 1. Crie o banco de dados no MySQL Workbench 8.0.
 2. Baixe e coloque o arquivo `ProjetoEcommerce.sql` no MySQL.
