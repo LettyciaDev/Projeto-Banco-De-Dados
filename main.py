@@ -222,7 +222,7 @@ class SistemaEcommerce:
                     id_venda = resultados[0]['novo_id_venda']
                     print(f"Venda criada com sucesso! ID: {id_venda}")
                 else:
-                    print("Erro ao criar venda.")
+                    print("Erro ao criar venda")
 
                 if id_venda:
                     while True:
