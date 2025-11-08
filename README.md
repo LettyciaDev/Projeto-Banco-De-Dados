@@ -10,10 +10,10 @@ Este é um sistema de e-commerce voltado para a venda de **artigos de esportes**
 ---
 
 ## 💻 Equipe 
-- **Anna Beatriz dos Santos Silva** 🏐 [`@Anninhaxs`](https://github.com/Anninhaxs)  
-- **Bento Guilherme Gomes Oliveira** ⚽ [`@bnnto`](https://github.com/bnnto)  
-- **João Victor Castelo Branco de Sena** 🏋️ [`@joao0cb`](https://github.com/joao0cb)  
-- **Lettycia Vitoria Melo de França** 🏀 [`@LettyciaDev`](https://github.com/LettyciaDev)  
+- **Anna Beatriz dos Santos Silva** [`@Anninhaxs`](https://github.com/Anninhaxs)  
+- **Bento Guilherme Gomes Oliveira**  [`@bnnto`](https://github.com/bnnto)  
+- **João Victor Castelo Branco de Sena** [`@joao0cb`](https://github.com/joao0cb)  
+- **Lettycia Vitoria Melo de França** [`@LettyciaDev`](https://github.com/LettyciaDev)  
 
 ---
 
