@@ -281,6 +281,19 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- procedimento de reajuste salario
+DELIMITER $$ 
+CREATE PROCEDURE reajuste_salario (
+	IN p_percentual DECIMAL(5, 2),
+    IN p_tipo VARCHAR(20)
+)
+BEGIN
+	UPDATE vendedor
+    SET salario = salario + (salario * (p_percentual / 100))
+    WHERE tipo = p_tipo;
+END$$
+DELIMITER ;
+
 -- procedimento de estatisticas
 DELIMITER $$
 CREATE PROCEDURE EstatisticaVendas()
