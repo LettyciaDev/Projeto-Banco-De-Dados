@@ -49,7 +49,6 @@ class SistemaEcommerce:
     def login(self):
         """Sistema de login pedindo para usuário digitar username e senha"""
         print("\n=== LOGIN SISTEMA E-COMMERCE ===")
-        print("Usuários disponíveis: admin@localhost, gerenteloja@localhost, funcionario@localhost")
         
         tentativas = 0
         max_tentativas = 3
@@ -529,18 +528,48 @@ class SistemaEcommerce:
                     id_produto = input("ID do produto (ou 0 para encerrar): ").strip()
                     if id_produto == "0":
                         break
+                    
                     try:
                         id_produto_int = int(id_produto)
-                        qtd = int(input("Quantidade: "))
-                        valor = float(input("Valor unitário: "))
-                        obs = input("Observações: ").strip()
                     except ValueError:
-                        print("Valor inválido.")
+                        print("ID do produto inválido. Use apenas números.")
                         continue
+
+                    produto_info = self.executar_query(
+                        "SELECT nome, valor, qtd_estoque FROM produto WHERE id = %s", 
+                        (id_produto_int,)
+                    )
+                    
+                    if not produto_info:
+                        print("Produto não encontrado.")
+                        continue
+                    
+                    produto_info = produto_info[0]
+                    print(f"\nProduto: {produto_info['nome']}")
+                    print(f"Valor unitário: R${produto_info['valor']:.2f}")
+                    print(f"Estoque disponível: {produto_info['qtd_estoque']} unidades")
+                    
+                    try:
+                        qtd = int(input("Quantidade: "))
+                    except ValueError:
+                        print("Quantidade inválida. Use apenas números.")
+                        continue
+
+                    if qtd > produto_info['qtd_estoque']:
+                        print(f"Estoque insuficiente! Disponível: {produto_info['qtd_estoque']}")
+                        continue
+                    
+                    if qtd <= 0:
+                        print("Quantidade deve ser maior que zero.")
+                        continue
+
+                    obs = input("Observações: ").strip()
+                    
+                    valor_produto = produto_info['valor']
 
                     try:
                         query = "CALL adicionar_produto_venda(%s, %s, %s, %s, %s, @mensagem)"
-                        self.cursor.execute(query, (id_venda, id_produto_int, qtd, valor, obs))
+                        self.cursor.execute(query, (id_venda, id_produto_int, qtd, valor_produto, obs))
                         
                         self.cursor.execute("SELECT @mensagem as msg")
                         result = self.cursor.fetchone()
@@ -548,7 +577,8 @@ class SistemaEcommerce:
                         if result and 'msg' in result:
                             print(result['msg'])
                         else:
-                            print("Produto adicionado à venda.")
+                            total_item = qtd * valor_produto
+                            print(f"Produto adicionado à venda! Total do item: R${total_item:.2f}")
                             
                     except Error as e:
                         print(f"Erro ao adicionar produto: {e}")
