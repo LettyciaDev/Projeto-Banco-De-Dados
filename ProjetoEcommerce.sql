@@ -294,6 +294,46 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- procedimento de sorteio 
+DELIMITER $$
+
+CREATE PROCEDURE sortear_cliente_premiado()
+BEGIN
+    DECLARE v_id_cliente INT;
+    DECLARE v_nome_cliente VARCHAR(50);
+    DECLARE v_valor_voucher DECIMAL(10,2);
+    DECLARE v_especial INT DEFAULT 0;
+
+    -- Sortear um cliente aleatoriamente
+    SELECT id, nome
+    INTO v_id_cliente, v_nome_cliente
+    FROM cliente
+    ORDER BY RAND()
+    LIMIT 1;
+
+    -- Verificar se o cliente está na tabela de clientes especiais
+    SELECT COUNT(*) INTO v_especial
+    FROM clientes_especiais
+    WHERE id_cliente = v_id_cliente;
+
+    -- Definir valor do voucher conforme o tipo de cliente
+    IF v_especial > 0 THEN
+        SET v_valor_voucher = 200.00;
+    ELSE
+        SET v_valor_voucher = 100.00;
+    END IF;
+
+    -- Exibir o resultado do sorteio
+    SELECT 
+        v_id_cliente AS id_cliente_sorteado,
+        v_nome_cliente AS nome_cliente,
+        IF(v_especial > 0, 'Cliente Especial', 'Cliente Comum') AS tipo_cliente,
+        v_valor_voucher AS valor_voucher,
+        CONCAT('Parabéns, ', v_nome_cliente, '! Você ganhou um voucher de R$ ', FORMAT(v_valor_voucher, 2), '!') AS mensagem;
+END$$
+
+DELIMITER ;
+
 -- procedimento de estatisticas
 DELIMITER $$
 CREATE PROCEDURE EstatisticaVendas()
