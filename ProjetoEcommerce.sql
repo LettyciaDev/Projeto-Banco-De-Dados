@@ -206,7 +206,7 @@ DELIMITER ;
 DROP TRIGGER IF EXISTS vendedor_bonus;
 DELIMITER $$
 CREATE TRIGGER vendedor_bonus 
-AFTER UPDATE ON vendedor 
+BEFORE UPDATE ON vendedor 
 FOR EACH ROW
 BEGIN
 	DECLARE bonus_total DECIMAL(10, 2);
@@ -220,12 +220,12 @@ BEGIN
         INSERT INTO funcionario_especial (id_vendedor, bonus)
         VALUES (NEW.id, bonus_vendedor);
 
-        UPDATE vendedor
-        SET salario = NEW.salario + bonus_vendedor
-        WHERE id = NEW.id;
+        SET NEW.salario = NEW.salario + bonus_vendedor;
+
+        SELECT SUM(bonus) + bonus_vendedor INTO bonus_total
+        FROM funcionario_especial;
+
     END IF;
-    
-    SELECT SUM(bonus) INTO bonus_total FROM funcionario_especial;
 END$$
 DELIMITER ;
 	
