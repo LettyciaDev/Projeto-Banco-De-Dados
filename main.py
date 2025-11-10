@@ -14,9 +14,7 @@ class SistemaEcommerce:
         self.tipo_usuario = None
     
     def tentar_conectar_com_usuario(self, username, senha):
-        """Tenta conectar com um usuário específico e senha"""
         try:
-            # Fecha conexão anterior se existir
             if self.conexao and self.conexao.is_connected():
                 self.desconectar()
             
@@ -36,7 +34,6 @@ class SistemaEcommerce:
             return False
     
     def definir_tipo_usuario(self, username):
-        """Define o tipo de usuário baseado no username"""
         if username == 'admin@localhost':
             self.tipo_usuario = 'admin'
         elif username == 'gerenteloja@localhost':
@@ -47,8 +44,8 @@ class SistemaEcommerce:
             self.tipo_usuario = 'desconhecido'
     
     def login(self):
-        """Sistema de login pedindo para usuário digitar username e senha"""
         print("\n=== LOGIN SISTEMA E-COMMERCE ===")
+        print("Usuários disponíveis: admin@localhost, gerenteloja@localhost, funcionario@localhost")
         
         tentativas = 0
         max_tentativas = 3
@@ -70,7 +67,6 @@ class SistemaEcommerce:
         return False
 
     def verificar_privilegio(self, operacao, tabela=None):
-        """Verifica se usuário tem privilégio para operação"""
         if self.tipo_usuario == 'admin':
             return True
         elif self.tipo_usuario == 'gerente':
@@ -90,14 +86,23 @@ class SistemaEcommerce:
 
             placeholders = ', '.join(['%s'] * len(params))
             query = f"CALL {nome_procedure}({placeholders})"
-            
             self.cursor.execute(query, params)
             
             resultados = []
-            for result in self.cursor.stored_results():
-                resultados.extend(result.fetchall())
+            while True:
+                try:
+                    resultado = self.cursor.fetchall()
+                    if resultado:
+                        resultados.extend(resultado)
+                    
+                    if not self.cursor.nextset():
+                        break
+                except Error:
+                    break
             
-            self.conexao.commit()
+            if nome_procedure not in ["EstatisticaVendas"]:
+                self.conexao.commit()
+            
             return True, resultados
 
         except Error as e:
@@ -105,7 +110,7 @@ class SistemaEcommerce:
             if self.conexao and self.conexao.is_connected():
                 self.conexao.rollback()
             return False, None
-
+        
     def executar_query(self, query, params=None):
         try:
             if params:
@@ -130,7 +135,7 @@ class SistemaEcommerce:
         while True:
             print("\nGERENCIAR CLIENTES")
             print("1. Adicionar cliente")
-            print("2. Listar clientes (com idade calculada)") 
+            print("2. Listar clientes") 
             print("3. Atualizar cliente")
             print("4. Deletar cliente")
             print("5. Clientes especiais")
@@ -672,10 +677,17 @@ class SistemaEcommerce:
                 success, resultados = self.executar_procedure("EstatisticaVendas")
                 if resultados:
                     print("\nESTATÍSTICAS DE VENDAS:")
+                    tem_dados = False
                     for resultado in resultados:
                         for key, value in resultado.items():
-                            print(f"{key}: {value}")
+                            if value is not None and value != 'None':
+                                print(f"{key}: {value}")
+                                tem_dados = True
                         print("-" * 30)
+                    
+                    if not tem_dados:
+                        print("Nenhuma venda encontrada no sistema.")
+                        print("Adicione vendas para ver as estatísticas.")
                 else:
                     print("Nenhum dado encontrado para o relatório.")
             
