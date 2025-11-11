@@ -45,7 +45,6 @@ class SistemaEcommerce:
     
     def login(self):
         print("\n=== LOGIN SISTEMA E-COMMERCE ===")
-        print("Usuários disponíveis: admin@localhost, gerenteloja@localhost, funcionario@localhost")
         
         tentativas = 0
         max_tentativas = 3
@@ -110,7 +109,7 @@ class SistemaEcommerce:
             if self.conexao and self.conexao.is_connected():
                 self.conexao.rollback()
             return False, None
-        
+
     def executar_query(self, query, params=None):
         try:
             if params:
@@ -139,6 +138,7 @@ class SistemaEcommerce:
             print("3. Atualizar cliente")
             print("4. Deletar cliente")
             print("5. Clientes especiais")
+            print("6. Resgatar cashback")
             print("0. Voltar")
             
             opcao = input("Escolha: ").strip()
@@ -215,6 +215,44 @@ class SistemaEcommerce:
                         print(f"ID: {cliente['id']} | Nome: {cliente['nome']} | Idade: {cliente['idade']} | Cashback: R${cliente['cashback']:.2f}")
                 else:
                     print("Nenhum cliente especial encontrado")
+
+            elif opcao == "6":
+                if not self.verificar_privilegio('UPDATE', 'clientes_especiais'):
+                    print("Sem permissão para resgatar cashback")
+                    continue
+                    
+                try:
+                    cliente_id = int(input("ID do cliente: ").strip())
+                    valor_resgate = float(input("Valor a resgatar: R$ ").strip())
+                except ValueError:
+                    print("Valor inválido. Use números.")
+                    continue
+                
+                cliente_especial = self.executar_query(
+                    "SELECT cashback FROM clientes_especiais WHERE id_cliente = %s", 
+                    (cliente_id,)
+                )
+                
+                if not cliente_especial:
+                    print("Cliente não é especial ou não encontrado.")
+                    continue
+                
+                cashback_atual = cliente_especial[0]['cashback']
+                
+                if valor_resgate > cashback_atual:
+                    print(f"Valor de resgate maior que cashback disponível (R${cashback_atual:.2f})")
+                    continue
+                
+                success, _ = self.executar_procedure("resgatar_cashback", [cliente_id, valor_resgate])
+                
+                if success:
+                    if valor_resgate == cashback_atual:
+                        print(f"Cashback totalmente resgatado! Cliente removido dos especiais.")
+                    else:
+                        novo_cashback = cashback_atual - valor_resgate
+                        print(f"Resgate realizado! Novo cashback: R${novo_cashback:.2f}")
+                else:
+                    print("Erro ao resgatar cashback.")
             
             elif opcao == "0":
                 break
@@ -223,23 +261,23 @@ class SistemaEcommerce:
     
     def menu_vendedores(self):
         if not self.verificar_privilegio('SELECT', 'vendedor'):
-            print("Você não tem permissão para gerenciar vendedores")
+            print("Você não tem permissão para gerenciar funcionários")
             return
             
         while True:
-            print("\nGERENCIAR VENDEDORES")
-            print("1. Adicionar vendedor")
-            print("2. Listar vendedores")
-            print("3. Atualizar vendedor")
-            print("4. Deletar vendedor")
-            print("5. Vendedores com bonus")
+            print("\nGERENCIAR FUNCIONÁRIOS")
+            print("1. Adicionar funcionário")
+            print("2. Listar funcionário")
+            print("3. Atualizar funcionário")
+            print("4. Deletar funcionário")
+            print("5. Funcionário com bonus")
             print("0. Voltar")
             
             opcao = input("Escolha: ").strip()
             
             if opcao == "1":
                 if not self.verificar_privilegio('INSERT', 'vendedor'):
-                    print("Sem permissão para adicionar vendedores")
+                    print("Sem permissão para adicionar funcionário")
                     continue
                     
                 nome = input("Nome: ").strip()
@@ -253,26 +291,26 @@ class SistemaEcommerce:
                 
                 success, _ = self.executar_procedure("adicionar_vendedor", [nome, causa_s, tipo, nota_media])
                 if success:
-                    print("Vendedor adicionado com sucesso.")
+                    print("Funcionário adicionado com sucesso.")
                 else:
-                    print("Erro ao adicionar vendedor.")
+                    print("Erro ao adicionar funcionário.")
             
             elif opcao == "2":
                 resultados = self.executar_query("SELECT * FROM vendedor")
                 if resultados:
-                    print("\nLISTA DE VENDEDORES")
+                    print("\nLISTA DE FUNCIONÁRIOS")
                     for vendedor in resultados:
                         print(f"ID: {vendedor['id']} | Nome: {vendedor['nome']} | Tipo: {vendedor['tipo']} | Nota: {vendedor['nota_media']} | Valor Vendido: R${vendedor['valor_vendido']:.2f}")
                 else:
-                    print("Nenhum vendedor encontrado.")
+                    print("Nenhum funcionário encontrado.")
             
             elif opcao == "3":
                 if not self.verificar_privilegio('UPDATE', 'vendedor'):
-                    print("Sem permissão para atualizar vendedores")
+                    print("Sem permissão para atualizar funcionários")
                     continue
                     
                 try:
-                    vendedor_id = int(input("ID do vendedor: ").strip())
+                    vendedor_id = int(input("ID do funcionário: ").strip())
                 except ValueError:
                     print("ID inválido. Use apenas números.")
                     continue
@@ -285,7 +323,7 @@ class SistemaEcommerce:
                 
                 vendedor_atual = self.executar_query("SELECT * FROM vendedor WHERE id = %s", (vendedor_id,))
                 if not vendedor_atual:
-                    print("Vendedor não encontrado.")
+                    print("Funcionário não encontrado.")
                     continue
                 
                 vendedor_atual = vendedor_atual[0]
@@ -301,17 +339,17 @@ class SistemaEcommerce:
                 )
                 
                 if success is not None:
-                    print("Vendedor atualizado com sucesso.")
+                    print("Funcionário atualizado com sucesso.")
                 else:
-                    print("Erro ao atualizar vendedor.")
+                    print("Erro ao atualizar funcionário.")
             
             elif opcao == "4":
                 if not self.verificar_privilegio('DELETE', 'vendedor'):
-                    print("Sem permissão para deletar vendedores")
+                    print("Sem permissão para deletar funcionários")
                     continue
                     
                 try:
-                    vendedor_id = int(input("ID do vendedor a ser deletado: ").strip())
+                    vendedor_id = int(input("ID do funcionário a ser deletado: ").strip())
                 except ValueError:
                     print("ID inválido. Use apenas números.")
                     continue
@@ -322,17 +360,17 @@ class SistemaEcommerce:
                 )
                 
                 if produtos_associados and produtos_associados[0]['total'] > 0:
-                    print("Não é possível deletar este vendedor pois existem produtos associados a ele.")
+                    print("Não é possível deletar este funcionário pois existem produtos associados a ele.")
                     print("Delete os produtos primeiro ou transfira-os para outro vendedor.")
                     continue
                 
-                confirmacao = input(f"Tem certeza que deseja deletar o vendedor ID {vendedor_id}? (s/N): ").strip().lower()
+                confirmacao = input(f"Tem certeza que deseja deletar o funcionário ID {vendedor_id}? (s/N): ").strip().lower()
                 if confirmacao == 's':
                     success = self.executar_query("DELETE FROM vendedor WHERE id = %s", (vendedor_id,))
                     if success is not None:
-                        print("Vendedor deletado com sucesso.")
+                        print("Funcionário deletado com sucesso.")
                     else:
-                        print("Erro ao deletar vendedor.")
+                        print("Erro ao deletar funcionário.")
                 else:
                     print("Operação cancelada.")
             
@@ -343,11 +381,11 @@ class SistemaEcommerce:
                     JOIN vendedor v ON fe.id_vendedor = v.id
                 """)
                 if resultados:
-                    print("\nVENDEDORES COM BÔNUS")
+                    print("\FUNCIONÁRIOS COM BÔNUS")
                     for vendedor in resultados:
                         print(f"ID: {vendedor['id']} | Nome: {vendedor['nome']} | Tipo: {vendedor['tipo']} | Valor Vendido: R${vendedor['valor_vendido']:.2f} | Bônus: R${vendedor['bonus']:.2f}")
                 else:
-                    print("Nenhum vendedor com bônus encontrado")
+                    print("Nenhum funcionário com bônus encontrado")
             
             elif opcao == "0":
                 break
@@ -505,15 +543,17 @@ class SistemaEcommerce:
                 data_venda = input("Data da venda (YYYY-MM-DD): ").strip()
                 hora = input("Hora (HH:MM:SS): ").strip()
                 try:
+                    destino = input("Cidade de destino: ").strip()
+                    frete = float(input("Valor do frete: R$ ").strip())
                     id_cliente = int(input("ID do cliente: ").strip())
                     id_transp = int(input("ID da transportadora: ").strip())
                 except ValueError:
-                    print("ID inválido. Use apenas números.")
+                    print("Valor inválido. Use números para ID e frete.")
                     continue
 
                 try:
-                    query = "CALL adicionar_venda(%s, %s, %s, %s, @id_venda)"
-                    self.cursor.execute(query, (data_venda, hora, id_cliente, id_transp))
+                    query = "CALL adicionar_venda(%s, %s, %s, %s, %s, %s, @id_venda)"
+                    self.cursor.execute(query, (data_venda, hora, frete, destino, id_cliente, id_transp))
                     
                     self.cursor.execute("SELECT @id_venda as id_venda")
                     result = self.cursor.fetchone()
@@ -595,7 +635,7 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nVENDAS DETALHADAS")
                     for venda in resultados:
-                        print(f"ID: {venda['id_venda']} | Cliente: {venda['nome_cliente']} | Produto: {venda['nome_produto']} | Total: R${venda['total_venda']:.2f}")
+                        print(f"ID: {venda['id_venda']} | Cliente: {venda['nome_cliente']} | Produto: {venda['nome_produto']} | Total: R${venda['total_venda']:.2f} | Destino: {venda['destino']} | Frete: R${venda['frete']:.2f}")
                 else:
                     print("Nenhuma venda encontrada")
             
@@ -613,7 +653,7 @@ class SistemaEcommerce:
             print("\nGERENCIAR TRANSPORTADORAS")
             print("1. Adicionar transportadora")
             print("2. Listar transportadoras")
-            print("3. Soma de fretes por cidade")
+            print("3. Soma de fretes por destino")
             print("0. Voltar")
             
             opcao = input("Escolha: ").strip()
@@ -643,17 +683,17 @@ class SistemaEcommerce:
                     print("Nenhuma transportadora encontrada")
             
             elif opcao == "3":
-                cidade = input("Digite o nome da cidade para calcular fretes: ").strip()
-                resultados = self.executar_query("SELECT Soma_fretes(%s) as total_fretes", (cidade,))
+                destino = input("Digite a cidade de destino para calcular fretes: ").strip()
+                resultados = self.executar_query("SELECT Soma_fretes(%s) as total_fretes", (destino,))
                 
                 if resultados and resultados[0] and 'total_fretes' in resultados[0]:
                     total = resultados[0]['total_fretes']
                     if total is not None and float(total) > 0:
-                        print(f"Total de fretes para {cidade}: R${float(total):.2f}")
+                        print(f"Total de fretes para destino {destino}: R${float(total):.2f}")
                     else:
-                        print(f"Nenhum frete encontrado para a cidade {cidade}")
+                        print(f"Nenhum frete encontrado para o destino {destino}")
                 else:
-                    print(f"Nenhum frete encontrado para a cidade {cidade}")
+                    print(f"Nenhum frete encontrado para o destino {destino}")
             
             elif opcao == "0":
                 break
@@ -668,7 +708,7 @@ class SistemaEcommerce:
             print("3. Total por vendedor (View)")
             print("4. Status do estoque (View)")
             print("5. Vendas detalhadas (View)")
-            print("6. Soma de fretes por cidade")
+            print("6. Soma de fretes por destino")
             print("0. Voltar")
             
             opcao = input("Escolha: ").strip()
@@ -680,7 +720,7 @@ class SistemaEcommerce:
                     tem_dados = False
                     for resultado in resultados:
                         for key, value in resultado.items():
-                            if value is not None and value != 'None':
+                            if value is not None and value != 'None' and not value.startswith('---'):
                                 print(f"{key}: {value}")
                                 tem_dados = True
                         print("-" * 30)
@@ -733,22 +773,22 @@ class SistemaEcommerce:
                 if resultados:
                     print("\nVENDAS DETALHADAS")
                     for venda in resultados:
-                        print(f"Venda: {venda['id_venda']} | Cliente: {venda['nome_cliente']} | Produto: {venda['nome_produto']} | Vendedor: {venda['vendedor_nome']} | Total: R${venda['total_venda']:.2f}")
+                        print(f"Venda: {venda['id_venda']} | Cliente: {venda['nome_cliente']} | Produto: {venda['nome_produto']} | Vendedor: {venda['vendedor_nome']} | Total: R${venda['total_venda']:.2f} | Destino: {venda['destino']}")
                 else:
                     print("Nenhuma venda encontrada")
             
             elif opcao == "6":
-                cidade = input("Digite o nome da cidade para calcular fretes: ").strip()
-                resultados = self.executar_query("SELECT Soma_fretes(%s) as total_fretes", (cidade,))
+                destino = input("Digite a cidade de destino para calcular fretes: ").strip()
+                resultados = self.executar_query("SELECT Soma_fretes(%s) as total_fretes", (destino,))
                 
                 if resultados and resultados[0] and 'total_fretes' in resultados[0]:
                     total = resultados[0]['total_fretes']
                     if total is not None and float(total) > 0:
-                        print(f"Total de fretes para {cidade}: R${float(total):.2f}")
+                        print(f"Total de fretes para destino {destino}: R${float(total):.2f}")
                     else:
-                        print(f"Nenhum frete encontrado para a cidade {cidade}")
+                        print(f"Nenhum frete encontrado para o destino {destino}")
                 else:
-                    print(f"Nenhum frete encontrado para a cidade {cidade}")
+                    print(f"Nenhum frete encontrado para o destino {destino}")
             
             elif opcao == "0":
                 break
@@ -759,7 +799,7 @@ class SistemaEcommerce:
         while True:
             print(f"\nSISTEMA DE E-COMMERCE - Usuário: {self.usuario_atual} ({self.tipo_usuario})")
             print("1. Gerenciar Clientes")
-            print("2. Gerenciar Vendedores") 
+            print("2. Gerenciar Funcionários") 
             print("3. Gerenciar Produtos")
             print("4. Gerenciar Vendas")
             print("5. Gerenciar Transportadoras")

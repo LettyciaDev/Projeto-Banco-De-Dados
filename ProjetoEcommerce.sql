@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS venda(
     id INT PRIMARY KEY AUTO_INCREMENT,
     data_venda DATE NOT NULL,
     hora TIME NOT NULL,
+    frete DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    destino VARCHAR(100) NOT NULL,
     id_cliente INT NOT NULL,
     id_transp INT NOT NULL,
     FOREIGN KEY (id_cliente) REFERENCES cliente(id),
@@ -90,7 +92,9 @@ cliente.nome AS nome_cliente,
 produto.nome AS nome_produto,
 vendedor.nome AS vendedor_nome,
 venda.data_venda, venda.hora, venda_produto.qtd, venda_produto.valor,
-(venda_produto.qtd * venda_produto.valor) AS total_venda
+(venda_produto.qtd * venda_produto.valor) AS total_venda,
+venda.destino,
+venda.frete
 FROM venda
 JOIN venda_produto ON venda_produto.id_venda = venda.id
 JOIN produto ON venda_produto.id_produto = produto.id
@@ -154,25 +158,21 @@ BEGIN
 END //
 DELIMITER ;
 
--- Função Soma_fretes
+-- Função Soma_fretes CORRIGIDA
 DROP FUNCTION IF EXISTS Soma_fretes;
 DELIMITER $$
-CREATE FUNCTION Soma_fretes (destino VARCHAR(50))
+CREATE FUNCTION Soma_fretes (destino_param VARCHAR(50))
 RETURNS DECIMAL(10, 2)
 READS SQL DATA
 BEGIN
     DECLARE total_fretes DECIMAL(10, 2);
 
     SELECT
-        SUM(VP.valor) INTO total_fretes
+        SUM(frete) INTO total_fretes
     FROM
-        venda AS V
-    INNER JOIN
-        transportadora AS T ON V.id_transp = T.id
-    INNER JOIN
-        venda_produto AS VP ON V.id = VP.id_venda
+        venda
     WHERE
-        T.cidade = destino;
+        destino = destino_param;
 
     RETURN IFNULL(total_fretes, 0.00);
 END $$
@@ -205,26 +205,31 @@ DELIMITER ;
 -- Trigger de funcionario especial
 DROP TRIGGER IF EXISTS vendedor_bonus;
 DELIMITER $$
-CREATE TRIGGER vendedor_bonus 
-BEFORE UPDATE ON vendedor 
+CREATE TRIGGER vendedor_bonus
+AFTER UPDATE ON vendedor
 FOR EACH ROW
 BEGIN
-	DECLARE bonus_total DECIMAL(10, 2);
-    DECLARE bonus_vendedor DECIMAL(10, 2);
+	DECLARE bonus_vendedor DECIMAL(10, 2);
     
+    -- Verifica se a condição de bônus é atingida E se o vendedor ainda não é especial
 	IF NEW.valor_vendido > 1000 AND 
-       (SELECT COUNT(*) FROM funcionario_especial WHERE id_vendedor = NEW.id) = 0 THEN
+       (SELECT COUNT(*) FROM funcionario_especial WHERE id_vendedor = NEW.id) = 0 
+    THEN
         
         SET bonus_vendedor = NEW.valor_vendido * 0.05;
 
+        -- 1. Insere o bônus na tabela auxiliar
         INSERT INTO funcionario_especial (id_vendedor, bonus)
         VALUES (NEW.id, bonus_vendedor);
 
-        SET NEW.salario = NEW.salario + bonus_vendedor;
+        -- 2. Atualiza a coluna salario do vendedor com o bônus
+        UPDATE vendedor
+        SET salario = salario + bonus_vendedor
+        WHERE id = NEW.id;
 
-        SELECT SUM(bonus) + bonus_vendedor INTO bonus_total
-        FROM funcionario_especial;
-
+        -- A lógica de cálculo do bonus_total e o SELECT CONCAT foram removidos para evitar o Error Code 1415.
+        -- A lógica principal do bônus está agora correta e é permitida.
+        
     END IF;
 END$$
 DELIMITER ;
@@ -359,83 +364,100 @@ BEGIN
     DECLARE mes_menor_venda_mais INT;
     DECLARE mes_maior_venda_menos INT;
     DECLARE mes_menor_venda_menos INT;
+    DECLARE total_vendas INT DEFAULT 0;
     
-    SELECT id_produto
-    INTO produto_mais_vendido
-    FROM venda_produto
-    GROUP BY id_produto
-    ORDER BY SUM(qtd) DESC
-    LIMIT 1;
+    -- Verificar se existem vendas
+    SELECT COUNT(*) INTO total_vendas FROM venda_produto;
     
-    SELECT id_produto
-    INTO produto_menos_vendido
-    FROM venda_produto
-    GROUP BY id_produto
-    ORDER BY SUM(qtd) ASC
-    LIMIT 1;
-    
-    SELECT nome INTO nome_produto_mais FROM produto WHERE id = produto_mais_vendido;
-    SELECT nome INTO nome_produto_menos FROM produto WHERE id = produto_menos_vendido;
-    
-    SELECT id_vendedor INTO vendedor_associado FROM produto WHERE id = produto_mais_vendido;
-    SELECT nome INTO nome_vendedor FROM vendedor WHERE id = vendedor_associado;
-    
-    SELECT SUM(vp.qtd * vp.valor)
-    INTO valor_mais_vendido
-    FROM venda_produto vp
-    WHERE vp.id_produto = produto_mais_vendido;
-    
-    SELECT SUM(vp.qtd * vp.valor)
-    INTO valor_menos_vendido
-    FROM venda_produto vp
-    WHERE vp.id_produto = produto_menos_vendido;	
-    
-    SELECT MONTH(v.data_venda)
-    INTO mes_maior_venda_mais
-    FROM venda v
-    JOIN venda_produto vp ON vp.id_venda = v.id
-    WHERE vp.id_produto = produto_mais_vendido
-    GROUP BY MONTH(v.data_venda)
-    ORDER BY SUM(vp.qtd) DESC
-    LIMIT 1;
-    
-    SELECT MONTH(v.data_venda)
-    INTO mes_menor_venda_mais
-    FROM venda v
-    JOIN venda_produto vp ON vp.id_venda = v.id
-    WHERE vp.id_produto = produto_mais_vendido
-    GROUP BY MONTH(v.data_venda)
-    ORDER BY SUM(vp.qtd) ASC
-    LIMIT 1;
-    
-    SELECT MONTH(v.data_venda)
-    INTO mes_maior_venda_menos
-    FROM venda v
-    JOIN venda_produto vp ON vp.id_venda = v.id
-    WHERE vp.id_produto = produto_menos_vendido
-    GROUP BY MONTH(v.data_venda)
-    ORDER BY SUM(vp.qtd) DESC
-    LIMIT 1;
-    
-    SELECT MONTH(v.data_venda)
-    INTO mes_menor_venda_menos
-    FROM venda v
-    JOIN venda_produto vp ON vp.id_venda = v.id
-    WHERE vp.id_produto = produto_menos_vendido
-    GROUP BY MONTH(v.data_venda)
-    ORDER BY SUM(vp.qtd) ASC
-    LIMIT 1;
-    
-    SELECT 
-        CONCAT('Produto mais vendido: ', nome_produto_mais) AS info1,
-        CONCAT('Vendedor associado: ', nome_vendedor) AS info2,
-        CONCAT('Valor ganho com o produto mais vendido: R$ ', FORMAT(valor_mais_vendido, 2)) AS info3,
-        CONCAT('Mês de maior venda (produto mais vendido): ', mes_maior_venda_mais) AS info4,
-        CONCAT('Mês de menor venda (produto mais vendido): ', mes_menor_venda_mais) AS info5,
-        CONCAT('Produto menos vendido: ', nome_produto_menos) AS info6,
-        CONCAT('Valor ganho com o produto menos vendido: R$ ', FORMAT(valor_menos_vendido, 2)) AS info7,
-        CONCAT('Mês de maior venda (produto menos vendido): ', mes_maior_venda_menos) AS info8,
-        CONCAT('Mês de menor venda (produto menos vendido): ', mes_menor_venda_menos) AS info9;
+    IF total_vendas = 0 THEN
+        SELECT 
+            'Nenhuma venda encontrada no sistema' AS info1,
+            'Adicione vendas para ver estatísticas' AS info2,
+            '---' AS info3,
+            '---' AS info4,
+            '---' AS info5,
+            '---' AS info6,
+            '---' AS info7,
+            '---' AS info8,
+            '---' AS info9;
+    ELSE
+        SELECT id_produto
+        INTO produto_mais_vendido
+        FROM venda_produto
+        GROUP BY id_produto
+        ORDER BY SUM(qtd) DESC
+        LIMIT 1;
+        
+        SELECT id_produto
+        INTO produto_menos_vendido
+        FROM venda_produto
+        GROUP BY id_produto
+        ORDER BY SUM(qtd) ASC
+        LIMIT 1;
+        
+        SELECT nome INTO nome_produto_mais FROM produto WHERE id = produto_mais_vendido;
+        SELECT nome INTO nome_produto_menos FROM produto WHERE id = produto_menos_vendido;
+        
+        SELECT id_vendedor INTO vendedor_associado FROM produto WHERE id = produto_mais_vendido;
+        SELECT nome INTO nome_vendedor FROM vendedor WHERE id = vendedor_associado;
+        
+        SELECT SUM(vp.qtd * vp.valor)
+        INTO valor_mais_vendido
+        FROM venda_produto vp
+        WHERE vp.id_produto = produto_mais_vendido;
+        
+        SELECT SUM(vp.qtd * vp.valor)
+        INTO valor_menos_vendido
+        FROM venda_produto vp
+        WHERE vp.id_produto = produto_menos_vendido;	
+        
+        SELECT MONTH(v.data_venda)
+        INTO mes_maior_venda_mais
+        FROM venda v
+        JOIN venda_produto vp ON vp.id_venda = v.id
+        WHERE vp.id_produto = produto_mais_vendido
+        GROUP BY MONTH(v.data_venda)
+        ORDER BY SUM(vp.qtd) DESC
+        LIMIT 1;
+        
+        SELECT MONTH(v.data_venda)
+        INTO mes_menor_venda_mais
+        FROM venda v
+        JOIN venda_produto vp ON vp.id_venda = v.id
+        WHERE vp.id_produto = produto_mais_vendido
+        GROUP BY MONTH(v.data_venda)
+        ORDER BY SUM(vp.qtd) ASC
+        LIMIT 1;
+        
+        SELECT MONTH(v.data_venda)
+        INTO mes_maior_venda_menos
+        FROM venda v
+        JOIN venda_produto vp ON vp.id_venda = v.id
+        WHERE vp.id_produto = produto_menos_vendido
+        GROUP BY MONTH(v.data_venda)
+        ORDER BY SUM(vp.qtd) DESC
+        LIMIT 1;
+        
+        SELECT MONTH(v.data_venda)
+        INTO mes_menor_venda_menos
+        FROM venda v
+        JOIN venda_produto vp ON vp.id_venda = v.id
+        WHERE vp.id_produto = produto_menos_vendido
+        GROUP BY MONTH(v.data_venda)
+        ORDER BY SUM(vp.qtd) ASC
+        LIMIT 1;
+        
+        SELECT 
+            CONCAT('Produto mais vendido: ', nome_produto_mais) AS info1,
+            CONCAT('Vendedor associado: ', nome_vendedor) AS info2,
+            CONCAT('Valor ganho com o produto mais vendido: R$ ', FORMAT(valor_mais_vendido, 2)) AS info3,
+            CONCAT('Mês de maior venda (produto mais vendido): ', mes_maior_venda_mais) AS info4,
+            CONCAT('Mês de menor venda (produto mais vendido): ', mes_menor_venda_mais) AS info5,
+            CONCAT('Produto menos vendido: ', nome_produto_menos) AS info6,
+            CONCAT('Valor ganho com o produto menos vendido: R$ ', FORMAT(valor_menos_vendido, 2)) AS info7,
+            CONCAT('Mês de maior venda (produto menos vendido): ', mes_maior_venda_menos) AS info8,
+            CONCAT('Mês de menor venda (produto menos vendido): ', mes_menor_venda_menos) AS info9;
+    END IF;
 END$$
 DELIMITER ;
 
@@ -475,27 +497,29 @@ BEGIN
 END $$
 DELIMITER ;
  
--- adicionar_venda com OUT p_novo_id_venda
+-- adicionar_venda ATUALIZADA com frete e destino
 DROP PROCEDURE IF EXISTS adicionar_venda;
 
 DELIMITER $$
 CREATE PROCEDURE adicionar_venda(
     IN p_data_venda DATE,
     IN p_hora TIME,
+    IN p_frete DECIMAL(10,2),
+    IN p_destino VARCHAR(100),
     IN p_id_cliente INT,
     IN p_id_transp INT,
     OUT p_novo_id_venda INT
 )
 BEGIN
     START TRANSACTION;
-    INSERT INTO venda (data_venda, hora, id_cliente, id_transp)
-      VALUES (p_data_venda, p_hora, p_id_cliente, p_id_transp);
+    INSERT INTO venda (data_venda, hora, frete, destino, id_cliente, id_transp)
+      VALUES (p_data_venda, p_hora, p_frete, p_destino, p_id_cliente, p_id_transp);
     SET p_novo_id_venda = LAST_INSERT_ID();
     COMMIT;
 END $$
 DELIMITER ;
 
--- adicionar_produto_venda usa OUT p_msg (nome correto)
+-- adicionar_produto_venda
 DROP PROCEDURE IF EXISTS adicionar_produto_venda;
 DELIMITER $$
 CREATE PROCEDURE adicionar_produto_venda(
@@ -602,6 +626,45 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS resgatar_cashback;
+
+DELIMITER $$
+CREATE PROCEDURE resgatar_cashback(
+    IN p_id_cliente INT,
+    IN p_valor_resgate DECIMAL(10,2)
+)
+BEGIN
+    DECLARE cashback_atual DECIMAL(10,2);
+    DECLARE novo_cashback DECIMAL(10,2);
+    
+    START TRANSACTION;
+    
+    SELECT cashback INTO cashback_atual
+    FROM clientes_especiais
+    WHERE id_cliente = p_id_cliente
+    FOR UPDATE;
+    
+    IF cashback_atual IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cliente não é especial';
+    ELSEIF p_valor_resgate > cashback_atual THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Valor de resgate maior que cashback disponível';
+    ELSE
+        SET novo_cashback = cashback_atual - p_valor_resgate;
+        
+        IF novo_cashback <= 0 THEN
+            DELETE FROM clientes_especiais 
+            WHERE id_cliente = p_id_cliente;
+        ELSE
+            UPDATE clientes_especiais 
+            SET cashback = novo_cashback 
+            WHERE id_cliente = p_id_cliente;
+        END IF;
+    END IF;
+    
+    COMMIT;
+END$$
+DELIMITER ;
+
 -- Inserindo 5 funcionarios
 CALL adicionar_vendedor('Lucas Silva', 'Equipe Performance', 'vendedor', 4.8);
 CALL adicionar_vendedor('Mariana Costa', 'Equipe Fitness', 'vendedor', 4.6);
@@ -612,10 +675,10 @@ CALL adicionar_vendedor('João Oliveira', 'Equipe Adventure', 'CEO',  5.0);
 -- Inserindo 20 produtos 
 CALL adicionar_produto('Tênis Nike Air Zoom', 'Tênis de corrida masculino', 50, 599.90, 'Edição 2025', 1);
 CALL adicionar_produto('Camisa Dry Fit', 'Camisa esportiva feminina', 80, 129.90, 'Tecido respirável', 2);
-CALL adicionar_produto('Bola de Futebol Adidas', 'Bola oficial Fifa Quality', 40, 249.90, 'Tamanho 5', 3);
+CALL adicionar_produto('Bola de Futebol Adidas', 'Bola oficial Fifa Quality', 40, 249.90, 'Tamanho 5', 1);
 CALL adicionar_produto('Corda de Pular Pro', 'Corda com rolamento rápido', 100, 59.90, 'Leve e resistente', 2);
 CALL adicionar_produto('Luvas de Academia', 'Luvas unissex antideslizantes', 75, 79.90, 'Couro sintético', 1);
-CALL adicionar_produto('Mochila Esportiva Puma', 'Mochila 30L resistente à água', 35, 199.90, 'Modelo 2025', 3);
+CALL adicionar_produto('Mochila Esportiva Puma', 'Mochila 30L resistente à água', 35, 199.90, 'Modelo 2025', 2);
 CALL adicionar_produto('Camisa do Brasil', 'Camisa oficial seleção 2025', 60, 349.90, 'Edição limitada', 4);
 CALL adicionar_produto('Bicicleta Mountain Bike', 'Aro 29 alumínio leve', 15, 2999.90, '21 marchas', 5);
 CALL adicionar_produto('Garrafa Térmica', '800ml inox esportiva', 90, 89.90, 'Tampa antivazamento', 2);
@@ -623,10 +686,10 @@ CALL adicionar_produto('Relógio Smartwatch Fit', 'Monitor cardíaco e GPS', 40,
 CALL adicionar_produto('Short Running', 'Short leve masculino', 70, 109.90, 'Secagem rápida', 1);
 CALL adicionar_produto('Top Fitness', 'Top de compressão', 65, 99.90, 'Suporte alto', 2);
 CALL adicionar_produto('Esteira Elétrica', 'Motor 2.5HP dobrável', 10, 3599.90, 'Suporta até 130kg', 5);
-CALL adicionar_produto('Patins Roller Pro', 'Patins profissional', 20, 899.90, 'Tamanho ajustável', 3);
+CALL adicionar_produto('Patins Roller Pro', 'Patins profissional', 20, 899.90, 'Tamanho ajustável', 4);
 CALL adicionar_produto('Bola de Basquete Spalding', 'Oficial NBA', 25, 289.90, 'Couro sintético', 4);
 CALL adicionar_produto('Boné Nike Sportswear', 'Boné unissex ajustável', 90, 129.90, 'Logo bordado', 1);
-CALL adicionar_produto('Raquete de Tênis Wilson', 'Raquete profissional leve', 30, 499.90, 'Grip ergonômico', 3);
+CALL adicionar_produto('Raquete de Tênis Wilson', 'Raquete profissional leve', 30, 499.90, 'Grip ergonômico', 5);
 CALL adicionar_produto('Tapete de Yoga', 'Antiderrapante 6mm', 85, 149.90, 'Material ecológico', 2);
 CALL adicionar_produto('Óculos de Natação Speedo', 'Antiembaçante e UV', 60, 159.90, 'Adulto', 4);
 CALL adicionar_produto('Kit Halteres', 'Par de 10kg cada', 25, 349.90, 'Revestido em borracha', 5);
@@ -675,3 +738,5 @@ CALL popular_clientes();
 CALL adicionar_transportadora('Expresso Rapido', 'São Paulo', 'Caminhão');
 CALL adicionar_transportadora('Entregas Seguras', 'Rio de Janeiro', 'Van');
 CALL adicionar_transportadora('Logística Nacional', 'Belo Horizonte', 'Caminhão Baú');
+
+SELECT * FROM funcionario_especial;
