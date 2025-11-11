@@ -237,22 +237,32 @@ class SistemaEcommerce:
                     print("Cliente não é especial ou não encontrado.")
                     continue
                 
-                cashback_atual = cliente_especial[0]['cashback']
+                cashback_atual = float(cliente_especial[0]['cashback'])
                 
                 if valor_resgate > cashback_atual:
                     print(f"Valor de resgate maior que cashback disponível (R${cashback_atual:.2f})")
                     continue
                 
-                success, _ = self.executar_procedure("resgatar_cashback", [cliente_id, valor_resgate])
+                novo_cashback = cashback_atual - valor_resgate
                 
-                if success:
-                    if valor_resgate == cashback_atual:
+                if novo_cashback <= 0:
+                    success = self.executar_query(
+                        "DELETE FROM clientes_especiais WHERE id_cliente = %s", 
+                        (cliente_id,)
+                    )
+                    if success is not None:
                         print(f"Cashback totalmente resgatado! Cliente removido dos especiais.")
                     else:
-                        novo_cashback = cashback_atual - valor_resgate
-                        print(f"Resgate realizado! Novo cashback: R${novo_cashback:.2f}")
+                        print("Erro ao remover cliente dos especiais.")
                 else:
-                    print("Erro ao resgatar cashback.")
+                    success = self.executar_query(
+                        "UPDATE clientes_especiais SET cashback = %s WHERE id_cliente = %s", 
+                        (novo_cashback, cliente_id)
+                    )
+                    if success is not None:
+                        print(f"Resgate realizado! Novo cashback: R${novo_cashback:.2f}")
+                    else:
+                        print("Erro ao atualizar cashback.")
             
             elif opcao == "0":
                 break
